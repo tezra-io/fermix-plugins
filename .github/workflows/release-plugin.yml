@@ -1,0 +1,142 @@
+name: release-plugin
+
+# Per-plugin release. Tag a merged commit `<name>/v<version>` (matching the
+# manifest version) and push the tag. Produces a signed, boundary-checked
+# tarball and regenerates the signed catalog index.
+on:
+  push:
+    tags: ["*/v*.*.*"]
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    name: validate · pack · sign · publish
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full tag history for the index build
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: sigstore/cosign-installer@v3
+
+      # Parse `<name>/v<version>` from the tag into outputs. The tag is
+      # developer-controlled (push access), but we still keep it out of any
+      # `run:` interpolation: it enters via $GITHUB_REF_NAME (env), is regex-
+      # validated, and only validated capture groups are exported.
+      - name: Parse and validate tag
+        id: tag
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$REF_NAME" =~ ^([a-z][a-z0-9_]{0,63})/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "::error::Tag '$REF_NAME' must be <name>/v<semver> (e.g. github/v1.2.0)."
+            exit 1
+          fi
+          name="${BASH_REMATCH[1]}"
+          version="${BASH_REMATCH[2]}"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "dir=plugins/$name" >> "$GITHUB_OUTPUT"
+          echo "tarball=$name-$version.tar.gz" >> "$GITHUB_OUTPUT"
+
+      - name: Verify manifest version matches tag
+        env:
+          DIR: ${{ steps.tag.outputs.dir }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          manifest_version="$(python3 -c "import json,os,sys; print(json.load(open(os.path.join(os.environ['DIR'],'plugin.json')))['version'])")"
+          if [ "$manifest_version" != "$VERSION" ]; then
+            echo "::error::plugin.json version $manifest_version != tag version $VERSION."
+            exit 1
+          fi
+
+      - name: Validate manifest
+        env:
+          DIR: ${{ steps.tag.outputs.dir }}
+        run: python3 scripts/validate_plugin.py "$DIR"
+
+      - name: Pack tarball (manifest at archive root)
+        env:
+          DIR: ${{ steps.tag.outputs.dir }}
+          TARBALL: ${{ steps.tag.outputs.tarball }}
+        run: tar -C "$DIR" -czf "$TARBALL" .
+
+      - name: Content-boundary check the packed artifact (pre-sign)
+        env:
+          DIR: ${{ steps.tag.outputs.dir }}
+          TARBALL: ${{ steps.tag.outputs.tarball }}
+        run: |
+          set -euo pipefail
+          tar -tzf "$TARBALL" > artifact-listing.txt
+          python3 scripts/validate_plugin.py --archive artifact-listing.txt "$DIR"
+
+      - name: Sign and hash
+        env:
+          TARBALL: ${{ steps.tag.outputs.tarball }}
+        run: |
+          set -euo pipefail
+          cosign sign-blob --yes \
+            --output-signature "${TARBALL}.sig" \
+            --output-certificate "${TARBALL}.pem" \
+            "$TARBALL"
+          sha256sum "$TARBALL" > "${TARBALL}.sha256"
+
+      - name: Publish plugin release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          fail_on_unmatched_files: true
+          files: |
+            ${{ steps.tag.outputs.tarball }}
+            ${{ steps.tag.outputs.tarball }}.sha256
+            ${{ steps.tag.outputs.tarball }}.sig
+            ${{ steps.tag.outputs.tarball }}.pem
+
+  index:
+    name: regenerate signed index
+    needs: release
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: sigstore/cosign-installer@v3
+
+      - name: Build index from tags + releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/build_index.py --out index.json
+
+      - name: Sign index
+        run: |
+          set -euo pipefail
+          cosign sign-blob --yes \
+            --output-signature index.json.sig \
+            --output-certificate index.json.pem \
+            index.json
+
+      - name: Publish to the rolling `index` release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: index
+          name: Plugin catalog index
+          body: Auto-generated signed catalog. Do not edit by hand.
+          fail_on_unmatched_files: true
+          files: |
+            index.json
+            index.json.sig
+            index.json.pem
