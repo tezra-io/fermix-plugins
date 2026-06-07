@@ -86,13 +86,19 @@ def validate_plugin_dir(plugin_dir: Path) -> dict:
 
 
 def check_boundary(top_level_entries, has_runtime: bool):
-    """Content-boundary allowlist over top-level entries (dir or archive)."""
+    """Content-boundary allowlist over top-level entries (dir or archive).
+
+    Anything not on the allowlist is rejected — including repo-level dotfiles
+    like ``.git``, ``.github``, and ``.gitignore``. Core's installer rejects
+    those at install time, so the publish side must reject them too; otherwise a
+    mispacked archive could be signed and published only to fail at install.
+    """
     allowed = ALLOWED_TOP_LEVEL | (RUNTIME_ECOSYSTEM_FILES if has_runtime else set())
     return [
         f"top-level entry {entry!r} violates the content-boundary allowlist "
         f"(allowed: {', '.join(sorted(allowed))})"
         for entry in sorted(set(top_level_entries))
-        if entry not in allowed and not entry.startswith(".git")
+        if entry not in allowed
     ]
 
 
