@@ -17,7 +17,7 @@ plugins/<name>/
   CHANGELOG.md
   README.md            # optional
   LICENSE              # optional (repo LICENSE applies otherwise)
-  yanked.json          # optional: ["1.0.1", ...] versions to mark yanked in the index
+  yanked.json          # optional: ["1.0.1", ...] versions to mark yanked in the catalog
 ```
 
 The top level of a plugin dir may contain **only** the entries above (plus the
@@ -34,14 +34,19 @@ this plugin's code and deps.
 
 `release-plugin.yml` then validates the manifest, packs
 `tar -C plugins/<name> … .` (manifest at the archive root), checks the content
-allowlist against the packed file list, signs with cosign (keyless OIDC),
+allowlist against the packed file list, signs with cosign (keyless OIDC), and
 attaches `<name>-<version>.tar.gz` + `.sha256` + `.sig` + `.pem` to a GitHub
-Release for the tag, and regenerates the signed catalog `index.json` on the
-rolling `index` release.
+Release for the tag.
 
-Adding a plugin requires **no change in the fermix repo** — the catalog entry
-(name, logo, description, compat floors) is derived from `plugin.json` by CI,
-and installed daemons pick it up on their next index refresh.
+4. To put the release in front of users, regenerate the **static catalog** in
+   the fermix repo: run `python3 scripts/release/sync_plugin_catalog.py` there
+   (it enumerates this repo's release tags, downloads + sha256- and
+   cosign-verifies every artifact it pins, and rewrites
+   `apps/fermix_core/priv/plugins/index.json`), then land that data change via
+   a normal fermix PR. The catalog ships inside the next fermix release — there
+   is no remote index and no refresh; daemons only ever read the bundled
+   catalog, and artifacts are fetched (and re-verified) at install time from
+   the GitHub Release published above.
 
 ## Validation
 
@@ -51,5 +56,7 @@ python3 scripts/validate_plugin.py plugins/github # one plugin
 ```
 
 The same checks run in CI on every PR and again (plus the archive-list check)
-at release time, before signing. Full manifest/schema reference:
-`fermix` repo, `docs/design/MILESTONE_8_PLUGIN_DISTRIBUTION.md` §5.
+at release time, before signing. Manifest/schema reference: the validation
+source of truth is `scripts/pluginlib.py` here and
+`FermixCore.Plugins.Registry.decode_manifest/2` in the fermix repo (the
+installer and registry run the same rules).

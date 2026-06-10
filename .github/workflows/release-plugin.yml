@@ -2,7 +2,8 @@ name: release-plugin
 
 # Per-plugin release. Tag a merged commit `<name>/v<version>` (matching the
 # manifest version) and push the tag. Produces a signed, boundary-checked
-# tarball and regenerates the signed catalog index.
+# tarball attached to a GitHub Release. The fermix repo's catalog
+# (priv/plugins/index.json) pins these artifacts via its sync script.
 on:
   push:
     tags: ["*/v*.*.*"]
@@ -17,8 +18,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # full tag history for the index build
 
       - uses: actions/setup-python@v5
         with:
@@ -100,43 +99,3 @@ jobs:
             ${{ steps.tag.outputs.tarball }}.sha256
             ${{ steps.tag.outputs.tarball }}.sig
             ${{ steps.tag.outputs.tarball }}.pem
-
-  index:
-    name: regenerate signed index
-    needs: release
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - uses: sigstore/cosign-installer@v3
-
-      - name: Build index from tags + releases
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/build_index.py --out index.json
-
-      - name: Sign index
-        run: |
-          set -euo pipefail
-          cosign sign-blob --yes \
-            --output-signature index.json.sig \
-            --output-certificate index.json.pem \
-            index.json
-
-      - name: Publish to the rolling `index` release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: index
-          name: Plugin catalog index
-          body: Auto-generated signed catalog. Do not edit by hand.
-          fail_on_unmatched_files: true
-          files: |
-            index.json
-            index.json.sig
-            index.json.pem
