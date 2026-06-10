@@ -1,0 +1,639 @@
+{
+  "schema_version": 2,
+  "name": "github",
+  "display_name": "GitHub",
+  "description": "Work with GitHub repositories, issues, and pull requests.",
+  "category": "developer",
+  "version": "1.0.0",
+  "default_enabled": false,
+  "interface": {
+    "short_description": "Manage GitHub repos, issues, and pull requests",
+    "developer_name": "Fermix",
+    "brand_color": "#24292F",
+    "logo": "assets/logo.svg",
+    "privacy_policy_url": "https://docs.github.com/site-policy/privacy-policies/github-privacy-statement",
+    "terms_of_service_url": "https://docs.github.com/site-policy/github-terms/github-terms-of-service"
+  },
+  "auth": {
+    "type": "oauth2",
+    "provider": "github",
+    "scopes": [
+      "read:user",
+      "repo"
+    ]
+  },
+  "tools": [
+    {
+      "name": "github_get_me",
+      "description": "Get the authenticated GitHub user profile.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "read:user"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/user",
+        "headers": {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "fields": [
+            "login",
+            "name",
+            "email",
+            "html_url",
+            "company",
+            "created_at"
+          ]
+        }
+      }
+    },
+    {
+      "name": "github_list_repos",
+      "description": "List repositories for the authenticated user.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "repo"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "all",
+              "public",
+              "private"
+            ],
+            "description": "Filter by visibility."
+          },
+          "sort": {
+            "type": "string",
+            "enum": [
+              "created",
+              "updated",
+              "pushed",
+              "full_name"
+            ],
+            "description": "Sort order."
+          },
+          "per_page": {
+            "type": "integer",
+            "description": "Results per page (max 100)."
+          },
+          "page": {
+            "type": "integer",
+            "description": "Page number, 1-based."
+          }
+        }
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/user/repos",
+        "query": {
+          "visibility": "{visibility}",
+          "sort": "{sort}",
+          "per_page": "{per_page}",
+          "page": "{page}"
+        },
+        "headers": {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "fields": [
+            "full_name",
+            "description",
+            "private",
+            "html_url",
+            "updated_at"
+          ]
+        }
+      }
+    },
+    {
+      "name": "github_list_issues",
+      "description": "List issues in a repository (filter by state or labels).",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "repo"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner (user or org)."
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed",
+              "all"
+            ],
+            "description": "Filter by state."
+          },
+          "labels": {
+            "type": "string",
+            "description": "Comma-separated label names."
+          },
+          "per_page": {
+            "type": "integer",
+            "description": "Results per page (max 100)."
+          },
+          "page": {
+            "type": "integer",
+            "description": "Page number, 1-based."
+          }
+        },
+        "required": [
+          "owner",
+          "repo"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/{owner}/{repo}/issues",
+        "query": {
+          "state": "{state}",
+          "labels": "{labels}",
+          "per_page": "{per_page}",
+          "page": "{page}"
+        },
+        "headers": {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "fields": [
+            "number",
+            "title",
+            "state",
+            "html_url",
+            "body",
+            "labels",
+            "created_at",
+            "updated_at"
+          ]
+        }
+      }
+    },
+    {
+      "name": "github_get_issue",
+      "description": "Get one issue with full details.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "repo"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner (user or org)."
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name."
+          },
+          "number": {
+            "type": "integer",
+            "description": "Issue number."
+          }
+        },
+        "required": [
+          "owner",
+          "repo",
+          "number"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/{owner}/{repo}/issues/{number}",
+        "headers": {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "fields": [
+            "number",
+            "title",
+            "state",
+            "html_url",
+            "body",
+            "labels",
+            "created_at",
+            "updated_at"
+          ]
+        }
+      }
+    },
+    {
+      "name": "github_create_issue",
+      "description": "Create a new issue in a repository.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "repo"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner (user or org)."
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name."
+          },
+          "title": {
+            "type": "string",
+            "description": "Issue title."
+          },
+          "body": {
+            "type": "string",
+            "description": "Issue body, Markdown."
+          },
+          "labels": {
+            "type": "array",
+            "description": "Label names to apply."
+          }
+        },
+        "required": [
+          "owner",
+          "repo",
+          "title"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/{owner}/{repo}/issues",
+        "headers": {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        },
+        "body": {
+          "title": "{title}",
+          "body": "{body}",
+          "labels": "{labels}"
+        },
+        "success": [
+          201
+        ],
+        "extract": {
+          "fields": [
+            "number",
+            "title",
+            "state",
+            "html_url",
+            "created_at"
+          ]
+        }
+      }
+    },
+    {
+      "name": "github_add_issue_comment",
+      "description": "Add a comment to an issue or pull request.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "repo"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner (user or org)."
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name."
+          },
+          "number": {
+            "type": "integer",
+            "description": "Issue or pull request number."
+          },
+          "body": {
+            "type": "string",
+            "description": "Comment body, Markdown."
+          }
+        },
+        "required": [
+          "owner",
+          "repo",
+          "number",
+          "body"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/{owner}/{repo}/issues/{number}/comments",
+        "headers": {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        },
+        "body": {
+          "body": "{body}"
+        },
+        "success": [
+          201
+        ],
+        "extract": {
+          "fields": [
+            "id",
+            "html_url",
+            "created_at"
+          ]
+        }
+      }
+    },
+    {
+      "name": "github_list_pull_requests",
+      "description": "List pull requests in a repository.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "repo"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner (user or org)."
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed",
+              "all"
+            ],
+            "description": "Filter by state."
+          },
+          "per_page": {
+            "type": "integer",
+            "description": "Results per page (max 100)."
+          },
+          "page": {
+            "type": "integer",
+            "description": "Page number, 1-based."
+          }
+        },
+        "required": [
+          "owner",
+          "repo"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/{owner}/{repo}/pulls",
+        "query": {
+          "state": "{state}",
+          "per_page": "{per_page}",
+          "page": "{page}"
+        },
+        "headers": {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "fields": [
+            "number",
+            "title",
+            "state",
+            "html_url",
+            "body",
+            "labels",
+            "created_at",
+            "updated_at"
+          ]
+        }
+      }
+    },
+    {
+      "name": "github_get_pull_request",
+      "description": "Get one pull request with full details.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "repo"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "description": "Repository owner (user or org)."
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name."
+          },
+          "number": {
+            "type": "integer",
+            "description": "Pull request number."
+          }
+        },
+        "required": [
+          "owner",
+          "repo",
+          "number"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/{owner}/{repo}/pulls/{number}",
+        "headers": {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "fields": [
+            "number",
+            "title",
+            "state",
+            "html_url",
+            "body",
+            "labels",
+            "created_at",
+            "updated_at"
+          ]
+        }
+      }
+    },
+    {
+      "name": "github_search_issues",
+      "description": "Search issues and pull requests across GitHub.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "repo"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "q": {
+            "type": "string",
+            "description": "Search query with qualifiers (repo:, is:, author:, label:)."
+          },
+          "per_page": {
+            "type": "integer",
+            "description": "Results per page (max 100)."
+          },
+          "page": {
+            "type": "integer",
+            "description": "Page number, 1-based."
+          }
+        },
+        "required": [
+          "q"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/search/issues",
+        "query": {
+          "q": "{q}",
+          "per_page": "{per_page}",
+          "page": "{page}"
+        },
+        "headers": {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "items[*]",
+          "fields": [
+            "number",
+            "title",
+            "state",
+            "html_url",
+            "body",
+            "labels",
+            "created_at",
+            "updated_at"
+          ]
+        }
+      }
+    },
+    {
+      "name": "github_search_repos",
+      "description": "Search repositories across GitHub.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "repo"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "q": {
+            "type": "string",
+            "description": "Search query with qualifiers (user:, language:, stars:)."
+          },
+          "per_page": {
+            "type": "integer",
+            "description": "Results per page (max 100)."
+          },
+          "page": {
+            "type": "integer",
+            "description": "Page number, 1-based."
+          }
+        },
+        "required": [
+          "q"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/search/repositories",
+        "query": {
+          "q": "{q}",
+          "per_page": "{per_page}",
+          "page": "{page}"
+        },
+        "headers": {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "items[*]",
+          "fields": [
+            "full_name",
+            "description",
+            "private",
+            "html_url",
+            "updated_at"
+          ]
+        }
+      }
+    }
+  ],
+  "skills": [
+    {
+      "name": "github-plugin",
+      "path": "skills/github-plugin/SKILL.md"
+    }
+  ],
+  "health_check": {
+    "kind": "local_readiness",
+    "requires_auth": true
+  },
+  "plugin_api": 2,
+  "min_core_version": "0.2.3"
+}

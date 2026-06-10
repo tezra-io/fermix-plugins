@@ -1,0 +1,433 @@
+{
+  "schema_version": 2,
+  "name": "notion",
+  "display_name": "Notion",
+  "description": "Search, read, create, and update Notion pages and data sources.",
+  "category": "productivity",
+  "version": "1.0.0",
+  "interface": {
+    "short_description": "Use Notion pages and data sources from Fermix",
+    "developer_name": "Fermix",
+    "logo": "assets/logo.svg"
+  },
+  "auth": {
+    "type": "oauth2",
+    "provider": "notion",
+    "scopes": []
+  },
+  "tools": [
+    {
+      "name": "notion_search",
+      "description": "Search Notion pages and data sources shared with the connection.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search text matched against page and data-source titles."
+          },
+          "filter": {
+            "type": "object",
+            "description": "Optional filter object, e.g. {\"property\": \"object\", \"value\": \"page\"}."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/search",
+        "headers": {
+          "Notion-Version": "2026-03-11"
+        },
+        "body": {
+          "query": "{query}",
+          "filter": "{filter}"
+        },
+        "success": [
+          200
+        ],
+        "paginate": {
+          "items_path": "results",
+          "cursor_path": "next_cursor",
+          "cursor_param": "start_cursor",
+          "cursor_in": "body",
+          "max_pages": 5,
+          "fields": [
+            "id",
+            "object",
+            "url",
+            "parent",
+            "properties",
+            "title",
+            "last_edited_time"
+          ]
+        }
+      }
+    },
+    {
+      "name": "notion_get_page",
+      "description": "Get one Notion page's metadata and properties (not its content blocks).",
+      "policy_class": "external_api",
+      "read_only": true,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page_id": {
+            "type": "string",
+            "description": "Page id (UUID)."
+          }
+        },
+        "required": [
+          "page_id"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.notion.com/v1/pages/{page_id}",
+        "headers": {
+          "Notion-Version": "2026-03-11"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "fields": [
+            "id",
+            "object",
+            "url",
+            "parent",
+            "archived",
+            "properties",
+            "last_edited_time"
+          ]
+        }
+      }
+    },
+    {
+      "name": "notion_get_block_children",
+      "description": "List a page's or block's child blocks (the page content).",
+      "policy_class": "external_api",
+      "read_only": true,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "block_id": {
+            "type": "string",
+            "description": "Block or page id (a page id works — pages are blocks)."
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Blocks per page, max 100."
+          }
+        },
+        "required": [
+          "block_id"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.notion.com/v1/blocks/{block_id}/children",
+        "query": {
+          "page_size": "{page_size}"
+        },
+        "headers": {
+          "Notion-Version": "2026-03-11"
+        },
+        "success": [
+          200
+        ],
+        "paginate": {
+          "items_path": "results",
+          "cursor_path": "next_cursor",
+          "cursor_param": "start_cursor",
+          "cursor_in": "query",
+          "max_pages": 5,
+          "fields": [
+            "id",
+            "type",
+            "has_children",
+            "paragraph",
+            "heading_1",
+            "heading_2",
+            "heading_3",
+            "bulleted_list_item",
+            "numbered_list_item",
+            "to_do",
+            "toggle",
+            "code",
+            "quote",
+            "callout",
+            "divider",
+            "child_page",
+            "child_database",
+            "table",
+            "table_row",
+            "bookmark",
+            "image",
+            "equation"
+          ]
+        }
+      }
+    },
+    {
+      "name": "notion_create_page",
+      "description": "Create a Notion page under a parent page or in a data source.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "parent": {
+            "type": "object",
+            "description": "Parent, e.g. {\"page_id\": \"...\"} or {\"data_source_id\": \"...\"}."
+          },
+          "properties": {
+            "type": "object",
+            "description": "Page properties; a bare page needs only the title property."
+          },
+          "children": {
+            "type": "array",
+            "description": "Optional content block objects."
+          }
+        },
+        "required": [
+          "parent",
+          "properties"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/pages",
+        "headers": {
+          "Notion-Version": "2026-03-11"
+        },
+        "body": {
+          "parent": "{parent}",
+          "properties": "{properties}",
+          "children": "{children}"
+        },
+        "success": [
+          200
+        ]
+      }
+    },
+    {
+      "name": "notion_update_page",
+      "description": "Update properties on an existing Notion page.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "page_id": {
+            "type": "string",
+            "description": "Page id (UUID)."
+          },
+          "properties": {
+            "type": "object",
+            "description": "Only the properties to change."
+          }
+        },
+        "required": [
+          "page_id",
+          "properties"
+        ]
+      },
+      "request": {
+        "method": "PATCH",
+        "url": "https://api.notion.com/v1/pages/{page_id}",
+        "headers": {
+          "Notion-Version": "2026-03-11"
+        },
+        "body": {
+          "properties": "{properties}"
+        },
+        "success": [
+          200
+        ]
+      }
+    },
+    {
+      "name": "notion_append_blocks",
+      "description": "Append content blocks to a page or block.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "block_id": {
+            "type": "string",
+            "description": "Block or page id to append under."
+          },
+          "children": {
+            "type": "array",
+            "description": "Block objects to append."
+          }
+        },
+        "required": [
+          "block_id",
+          "children"
+        ]
+      },
+      "request": {
+        "method": "PATCH",
+        "url": "https://api.notion.com/v1/blocks/{block_id}/children",
+        "headers": {
+          "Notion-Version": "2026-03-11"
+        },
+        "body": {
+          "children": "{children}"
+        },
+        "success": [
+          200
+        ]
+      }
+    },
+    {
+      "name": "notion_get_data_source",
+      "description": "Get a data source's schema (property names, types, options).",
+      "policy_class": "external_api",
+      "read_only": true,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data_source_id": {
+            "type": "string",
+            "description": "Data source id (UUID)."
+          }
+        },
+        "required": [
+          "data_source_id"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.notion.com/v1/data_sources/{data_source_id}",
+        "headers": {
+          "Notion-Version": "2026-03-11"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "fields": [
+            "id",
+            "object",
+            "title",
+            "description",
+            "properties",
+            "parent"
+          ]
+        }
+      }
+    },
+    {
+      "name": "notion_query_data_source",
+      "description": "Query a data source's pages with optional filter and sorts.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data_source_id": {
+            "type": "string",
+            "description": "Data source id (UUID)."
+          },
+          "filter": {
+            "type": "object",
+            "description": "Optional Notion filter object."
+          },
+          "sorts": {
+            "type": "array",
+            "description": "Optional sort objects."
+          }
+        },
+        "required": [
+          "data_source_id"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/data_sources/{data_source_id}/query",
+        "headers": {
+          "Notion-Version": "2026-03-11"
+        },
+        "body": {
+          "filter": "{filter}",
+          "sorts": "{sorts}"
+        },
+        "success": [
+          200
+        ],
+        "paginate": {
+          "items_path": "results",
+          "cursor_path": "next_cursor",
+          "cursor_param": "start_cursor",
+          "cursor_in": "body",
+          "max_pages": 5,
+          "fields": [
+            "id",
+            "object",
+            "url",
+            "properties",
+            "last_edited_time"
+          ]
+        }
+      }
+    },
+    {
+      "name": "notion_get_me",
+      "description": "Get the connection's bot user (verifies the Notion login).",
+      "policy_class": "external_api",
+      "read_only": true,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.notion.com/v1/users/me",
+        "headers": {
+          "Notion-Version": "2026-03-11"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "fields": [
+            "id",
+            "object",
+            "name",
+            "type",
+            "bot"
+          ]
+        }
+      }
+    }
+  ],
+  "skills": [
+    {
+      "name": "notion-plugin",
+      "path": "skills/notion-plugin/SKILL.md"
+    }
+  ],
+  "health_check": {
+    "kind": "local_readiness",
+    "requires_auth": true
+  },
+  "plugin_api": 2,
+  "min_core_version": "0.2.3"
+}
