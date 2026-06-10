@@ -13,6 +13,7 @@ from pathlib import Path
 SCHEMA_VERSION = 2
 NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 TOOL_NAME_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+CONFIG_KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 MAX_TOOL_DESCRIPTION_BYTES = 100
 MAX_LOGO_BYTES = 16 * 1024
@@ -75,14 +76,32 @@ def validate_plugin_dir(plugin_dir: Path) -> dict:
     errors += _validate_auth(manifest)
     errors += _validate_tools(manifest)
     errors += _validate_runtime(manifest)
+    errors += _validate_config(manifest)
     errors += _validate_skills(manifest, plugin_dir)
     errors += _validate_interface(manifest, plugin_dir)
     errors += check_boundary(
         [p.name for p in plugin_dir.iterdir()], has_runtime="runtime" in manifest
     )
+    errors += _check_no_symlinks(plugin_dir)
     if errors:
         raise ValidationError(f"{plugin_dir}:\n  - " + "\n  - ".join(errors))
     return manifest
+
+
+def _check_no_symlinks(plugin_dir: Path):
+    """Core's installer rejects symlink/hardlink archive members outright
+    (traversal guard), so the publish side must too — otherwise a tree with
+    links (e.g. npm's node_modules/.bin) gets signed and published only to
+    fail at every user's install. Vendor with `npm ci --no-bin-links`."""
+    links = [
+        str(p.relative_to(plugin_dir))
+        for p in sorted(plugin_dir.rglob("*"))
+        if p.is_symlink()
+    ]
+    return [
+        f"symlink {link!r}: links are rejected by the installer's archive guard"
+        for link in links
+    ]
 
 
 def check_boundary(top_level_entries, has_runtime: bool):
@@ -257,10 +276,61 @@ def _validate_runtime(manifest):
         errors.append("runtime block declared but no tool has rail: mcp")
     if runtime.get("kind") not in RUNTIME_KINDS:
         errors.append(f"runtime.kind must be one of {sorted(RUNTIME_KINDS)}")
-    if not isinstance(runtime.get("command"), str) or not runtime["command"].strip():
+    # M8 §8 shape: `command` is one executable name (a space-joined
+    # "node src/index.js" would pass publish and fail at spawn — the stdio
+    # transport resolves `command` whole); `args` is a separate list.
+    command = runtime.get("command")
+    if not isinstance(command, str) or not command:
         errors.append("runtime.command is required")
+    elif any(ch.isspace() for ch in command):
+        errors.append("runtime.command must be a single executable name (no whitespace)")
+    args = runtime.get("args", [])
+    if not isinstance(args, list) or not all(isinstance(a, str) and a for a in args):
+        errors.append("runtime.args must be a list of non-empty strings")
     if not isinstance(runtime.get("vendored"), bool):
         errors.append("runtime.vendored must be a boolean")
+    return errors
+
+
+CONFIG_ENTRY_FIELDS = {"key", "prompt", "required"}
+
+
+def _validate_config(manifest):
+    """Per-plugin config declarations (M8.1 §4.4) — mirrors the core decoder:
+    flat key/prompt/required entries, UPPER_SNAKE keys, nothing more."""
+    config = manifest.get("config")
+    if config is None:
+        return []
+    if not isinstance(config, list):
+        return ["config must be a list of {key, prompt, required} entries"]
+    errors = []
+    seen = set()
+    for entry in config:
+        if not isinstance(entry, dict):
+            errors.append("each config entry must be an object")
+            continue
+        errors += _validate_config_entry(entry, seen)
+    return errors
+
+
+def _validate_config_entry(entry, seen):
+    errors = []
+    key = entry.get("key")
+    label = key if isinstance(key, str) and key else "<unnamed config entry>"
+    unknown = sorted(set(entry) - CONFIG_ENTRY_FIELDS)
+    if unknown:
+        errors.append(f"{label}: config entry has unknown fields: {', '.join(unknown)}")
+    if not isinstance(key, str) or not CONFIG_KEY_RE.match(key):
+        errors.append(f"{label}: config key must match ^[A-Z][A-Z0-9_]*$")
+    elif key in seen:
+        errors.append(f"{label}: duplicate config key")
+    else:
+        seen.add(key)
+    prompt = entry.get("prompt")
+    if not isinstance(prompt, str) or not prompt.strip():
+        errors.append(f"{label}: config prompt must be a non-empty string")
+    if not isinstance(entry.get("required", False), bool):
+        errors.append(f"{label}: config required must be a boolean")
     return errors
 
 
