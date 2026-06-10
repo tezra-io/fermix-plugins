@@ -152,9 +152,10 @@ def _validate_auth(manifest):
     if auth_type not in AUTH_TYPES:
         errors.append(f"auth.type must be one of {sorted(AUTH_TYPES)}")
     if auth_type == "oauth2":
+        # An empty list is valid: some providers (Notion) have no scope model.
         scopes = auth.get("scopes")
-        if not isinstance(scopes, list) or not scopes or not all(isinstance(s, str) and s for s in scopes):
-            errors.append("oauth2 plugins must declare a non-empty auth.scopes list")
+        if not isinstance(scopes, list) or not all(isinstance(s, str) and s for s in scopes):
+            errors.append("oauth2 plugins must declare auth.scopes as a list of non-empty strings")
         if not isinstance(manifest.get("health_check"), dict):
             errors.append("oauth2 plugins must declare a health_check")
     if auth_type == "api_key":
@@ -204,10 +205,15 @@ def _validate_tool(tool, plugin_name, auth, seen):
     if rail == "http":
         errors += _validate_http_tool(tool, label)
     if auth.get("type") == "oauth2":
+        declared = auth.get("scopes") or []
         scopes = tool.get("requires_scopes")
-        if not isinstance(scopes, list) or not scopes:
+        if not declared:
+            # Scope-less provider: tools must not require scopes.
+            if scopes:
+                errors.append(f"{label}: requires_scopes must be a subset of auth.scopes")
+        elif not isinstance(scopes, list) or not scopes:
             errors.append(f"{label}: oauth2 tools must declare requires_scopes")
-        elif not set(scopes) <= set(auth.get("scopes") or []):
+        elif not set(scopes) <= set(declared):
             errors.append(f"{label}: requires_scopes must be a subset of auth.scopes")
     return errors
 
