@@ -1,0 +1,130 @@
+{
+  "schema_version": 2,
+  "name": "obsidian",
+  "display_name": "Obsidian",
+  "description": "Search, read, create, and append to notes in your local Obsidian vault.",
+  "category": "productivity",
+  "version": "1.0.0",
+  "interface": {
+    "short_description": "Use your Obsidian vault from Fermix",
+    "developer_name": "Fermix"
+  },
+  "auth": {
+    "type": "none"
+  },
+  "runtime": {
+    "kind": "node",
+    "min_version": "20",
+    "command": "node",
+    "args": ["src/index.js"],
+    "vendored": false
+  },
+  "config": [
+    {
+      "key": "OBSIDIAN_VAULT_PATH",
+      "prompt": "Path to your Obsidian vault",
+      "required": true
+    }
+  ],
+  "tools": [
+    {
+      "name": "obsidian_search_notes",
+      "description": "Full-text search across the vault's markdown notes (filenames and contents).",
+      "read_only": true,
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Case-insensitive text to find in note names or contents."
+          },
+          "limit": {
+            "type": "number",
+            "description": "Maximum results (default 10, max 50)."
+          }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "obsidian_read_note",
+      "description": "Read one note's markdown by vault-relative path, e.g. 'folder/note.md'.",
+      "read_only": true,
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Vault-relative note path ending in .md."
+          }
+        },
+        "required": ["path"]
+      }
+    },
+    {
+      "name": "obsidian_create_note",
+      "description": "Create a new markdown note. Refuses to overwrite an existing note.",
+      "read_only": false,
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Vault-relative note path ending in .md."
+          },
+          "content": {
+            "type": "string",
+            "description": "Markdown content for the new note."
+          }
+        },
+        "required": ["path", "content"]
+      }
+    },
+    {
+      "name": "obsidian_append_note",
+      "description": "Append markdown to an existing note. Refuses if the note does not exist.",
+      "read_only": false,
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Vault-relative note path ending in .md."
+          },
+          "content": {
+            "type": "string",
+            "description": "Markdown content to append."
+          }
+        },
+        "required": ["path", "content"]
+      }
+    },
+    {
+      "name": "obsidian_list_folder",
+      "description": "List notes and folders under a vault path (vault root when omitted).",
+      "read_only": true,
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Vault-relative folder path; omit for the vault root."
+          }
+        }
+      }
+    }
+  ],
+  "skills": [
+    {
+      "name": "obsidian-plugin",
+      "path": "skills/obsidian-plugin/SKILL.md"
+    }
+  ],
+  "plugin_api": 2,
+  "min_core_version": "0.2.3"
+}

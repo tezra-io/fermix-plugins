@@ -1,0 +1,15 @@
+{
+  "name": "fermix-obsidian-mcp",
+  "version": "1.0.0",
+  "description": "First-party MCP stdio server for the Fermix Obsidian plugin: 5 tools over a vault directory.",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.21.0"
+  }
+}
