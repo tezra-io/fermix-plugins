@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+- Clearer, API-named tool descriptions and a stronger skill trigger so the agent
+  uses these tools instead of the browser; tighter, token-efficient skill body.
+
 ## 1.0.0
 
 Initial release.

@@ -4,7 +4,7 @@
   "display_name": "Notion",
   "description": "Search, read, create, and update Notion pages and data sources.",
   "category": "productivity",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "interface": {
     "short_description": "Use Notion pages and data sources from Fermix",
     "developer_name": "Fermix",

@@ -4,7 +4,7 @@
   "display_name": "Obsidian",
   "description": "Search, read, create, and append to notes in your local Obsidian vault.",
   "category": "productivity",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "interface": {
     "short_description": "Use your Obsidian vault from Fermix",
     "developer_name": "Fermix",
@@ -30,7 +30,7 @@
   "tools": [
     {
       "name": "obsidian_search_notes",
-      "description": "Full-text search across the vault's markdown notes (filenames and contents).",
+      "description": "Search Obsidian vault notes by filename and content; returns paths and a snippet per match.",
       "read_only": true,
       "rail": "mcp",
       "parameters": {
@@ -50,7 +50,7 @@
     },
     {
       "name": "obsidian_read_note",
-      "description": "Read one note's markdown by vault-relative path, e.g. 'folder/note.md'.",
+      "description": "Read one Obsidian vault note's full markdown by vault-relative .md path.",
       "read_only": true,
       "rail": "mcp",
       "parameters": {
@@ -66,7 +66,7 @@
     },
     {
       "name": "obsidian_create_note",
-      "description": "Create a new markdown note. Refuses to overwrite an existing note.",
+      "description": "Create a new Obsidian vault note; makes parent folders; refuses to overwrite existing.",
       "read_only": false,
       "rail": "mcp",
       "parameters": {
@@ -86,7 +86,7 @@
     },
     {
       "name": "obsidian_append_note",
-      "description": "Append markdown to an existing note. Refuses if the note does not exist.",
+      "description": "Append markdown to an existing Obsidian vault note; refuses if the note is missing.",
       "read_only": false,
       "rail": "mcp",
       "parameters": {
@@ -106,7 +106,7 @@
     },
     {
       "name": "obsidian_list_folder",
-      "description": "List notes and folders under a vault path (vault root when omitted).",
+      "description": "List Obsidian vault notes and subfolders (trailing /) under a path; root if omitted.",
       "read_only": true,
       "rail": "mcp",
       "parameters": {

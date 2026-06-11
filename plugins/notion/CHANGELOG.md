@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+- Stronger skill trigger and a tighter, token-efficient skill body so the agent
+  uses these tools instead of the browser. Tool descriptions unchanged.
+
 ## 1.0.0
 
 - Initial release: declarative http-rail plugin, zero code.

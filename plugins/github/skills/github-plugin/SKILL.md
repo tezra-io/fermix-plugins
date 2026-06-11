@@ -1,58 +1,42 @@
 ---
 name: github-plugin
-description: Browse, search, and triage GitHub repositories, issues, and pull requests, and create issues or comments (confirming writes) through the Fermix GitHub plugin.
+description: Use for ANY GitHub request — repos, issues, pull requests, github.com or api.github.com URLs — to list, get, search, or triage, and to open issues or comment. Hits the GitHub REST API directly via the Fermix GitHub plugin.
 ---
 
 # GitHub
 
-Use this skill when the GitHub plugin is enabled and connected. Answer questions about repos, issues, and pull requests from the read tools; never publish anything (issue, comment) without explicit intent.
+Use the `github_*` tools for anything on GitHub — repos, issues, pull requests, or a `github.com`/`api.github.com` link. Do NOT use the browser or web search for GitHub; these tools call the REST API directly, return clean data, and need no page scraping.
 
-## Tools
+## Pick the tool
 
-Read:
-- `github_get_me` (read-only) — the authenticated user's profile (`login`, `name`, `email`, `html_url`). Use it to resolve "my"/"me" into a login before searching.
-- `github_list_repos` (read-only) — repositories the user can access. Args: `visibility` (`all`/`public`/`private`), `sort` (`created`/`updated`/`pushed`/`full_name`), `per_page`, `page`.
-- `github_list_issues` (read-only) — issues in one repo. Args: `owner`, `repo`, optional `state` (`open`/`closed`/`all`), `labels` (comma-separated), `per_page`, `page`. Note: GitHub's issues list also includes pull requests.
-- `github_get_issue` (read-only) — one issue with full body. Args: `owner`, `repo`, `number`.
-- `github_list_pull_requests` (read-only) — PRs in one repo. Args: `owner`, `repo`, optional `state`, `per_page`, `page`.
-- `github_get_pull_request` (read-only) — one PR with full body. Args: `owner`, `repo`, `number`.
-- `github_search_issues` (read-only) — search issues/PRs across all of GitHub. Args: `q`, `per_page`, `page`.
-- `github_search_repos` (read-only) — search repositories. Args: `q`, `per_page`, `page`.
+- Identity: `github_get_me` — resolve "my"/"me" to a login before searching.
+- Repos: `github_list_repos` (the user's own) · `github_search_repos` (anyone's, by `q`).
+- Issues in a known repo: `github_list_issues` (note: GitHub's issues list also includes PRs) · `github_get_issue` for one issue's full body.
+- PRs in a known repo: `github_list_pull_requests` · `github_get_pull_request` for one PR.
+- Don't know the repo, or filtering by author/text/label across repos: `github_search_issues` with `q` qualifiers.
+- Writes (confirm first): `github_create_issue`, `github_add_issue_comment`.
 
-Write (public actions — confirm first):
-- `github_create_issue` — open a new issue. Args: `owner`, `repo`, `title`, optional `body` (Markdown), `labels` (array of names).
-- `github_add_issue_comment` — comment on an issue or PR. Args: `owner`, `repo`, `number`, `body` (Markdown).
+List/get tools take `owner` + `repo` (and `number`); they are cheaper and ordered. Reach for search only when you lack the repo or need cross-repo filtering.
 
-## List vs. search
+## Search `q` qualifiers
 
-- **Know the repo?** Use the list/get tools (`github_list_issues`, `github_list_pull_requests`) — they are cheaper and ordered.
-- **Don't know the repo, or filtering by author/text/label across repos?** Use `github_search_issues` with `q` qualifiers.
+Free text plus space-separated qualifiers:
+- `repo:owner/name`, `is:open`/`is:closed`, `is:issue`/`is:pr`
+- `author:login`, `assignee:login`, `label:"bug"` (quote multi-word), `created:>2026-01-01`
+- repos: `user:login`, `org:name`, `language:elixir`, `stars:>100`
 
-## Search `q` qualifier syntax
-
-Combine free text with qualifiers, space-separated:
-
-- `repo:owner/name` — limit to one repository
-- `is:open` / `is:closed`, `is:issue` / `is:pr` — state and kind
-- `author:login`, `assignee:login`, `mentions:login` — people (use `github_get_me` for the user's own login)
-- `label:"bug"` — label (quote multi-word labels)
-- `created:>2026-01-01`, `updated:>=2026-06-01` — date ranges
-- repos (`github_search_repos`): `user:login`, `org:name`, `language:elixir`, `stars:>100`
-
-Example: open PRs by the user in one repo → `q: "repo:acme/api is:pr is:open author:<login>"`.
+Example — open PRs by the user in one repo: `q: "repo:acme/api is:pr is:open author:<login>"`.
 
 ## Write etiquette
 
-`github_create_issue` and `github_add_issue_comment` are **public actions** — they post under the user's account and notify other humans (watchers, mentioned users). Before calling either: show the exact `owner/repo`, title/body text, and labels, and get explicit confirmation. Never edit tone or content beyond what was approved.
+`github_create_issue` and `github_add_issue_comment` post publicly under the user's account and notify others. Before calling either, show the exact `owner/repo`, title/body, and labels, and get explicit confirmation. Don't alter approved content.
 
 ## Access breadth
 
-The connection carries the classic `repo` scope — it can read **and write** all repositories the user can access, including private ones and code. Fermix's v1 toolset only exposes the issue/PR/repo operations above, but be honest if asked: the token itself is broad. Stay inside what the user asked for.
+The connection holds the classic `repo` scope — read+write on every repo the user can access, including private code. The v1 tools only expose issue/PR/repo ops; stay inside what the user asked for, but be honest that the token is broad.
 
-## Pagination
+## Notes
 
-GitHub list and search responses are page-number based and capped at `per_page` ≤ 100 (default 30). There is no automatic pagination: if a result set looks truncated (you got exactly `per_page` items), fetch the next `page` yourself, and say when results may be incomplete. Keep `per_page` small (10–30) unless the task needs a full sweep.
-
-## Limitations
-
-No file/code contents, no commits or branches, no reviews or merges, no issue editing or closing, no repo creation. Do not claim those actions; suggest the user does them on github.com.
+- Pagination is page-number based, `per_page` ≤ 100 (default 30), no auto-paging. Exactly `per_page` items may mean more pages; fetch the next `page` and flag partial results. Keep `per_page` small (10–30).
+- No file/code contents, commits, branches, reviews, merges, issue editing/closing, or repo creation. Don't claim those; point the user to github.com.
+- If the `github_*` tools aren't available, the plugin isn't connected — tell the user to connect GitHub on the Fermix setup page. If a call returns an auth error, say to reconnect; don't retry or fall back to the browser.

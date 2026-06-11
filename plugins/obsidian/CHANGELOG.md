@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.3
+
+- Clearer tool descriptions and a stronger skill trigger so the agent uses the
+  vault tools instead of the browser or a raw filesystem read.
+
 ## 1.0.2
 
 - Replace the logo with a clean 128px transparent PNG of the Obsidian mark.

@@ -4,7 +4,7 @@
   "display_name": "GitHub",
   "description": "Work with GitHub repositories, issues, and pull requests.",
   "category": "developer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "default_enabled": false,
   "interface": {
     "short_description": "Manage GitHub repos, issues, and pull requests",
@@ -25,7 +25,7 @@
   "tools": [
     {
       "name": "github_get_me",
-      "description": "Get the authenticated GitHub user profile.",
+      "description": "Get the authenticated GitHub user's profile via the GitHub REST API (login, name, email).",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -60,7 +60,7 @@
     },
     {
       "name": "github_list_repos",
-      "description": "List repositories for the authenticated user.",
+      "description": "List the authenticated user's repos via the GitHub REST API; filter by visibility, sort, paginate.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -128,7 +128,7 @@
     },
     {
       "name": "github_list_issues",
-      "description": "List issues in a repository (filter by state or labels).",
+      "description": "List issues in a GitHub repo via the REST API by owner/repo; filter by state/labels (includes PRs).",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -205,7 +205,7 @@
     },
     {
       "name": "github_get_issue",
-      "description": "Get one issue with full details.",
+      "description": "Get one GitHub issue's full details (body, labels, state) via the REST API by owner/repo/number.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -260,7 +260,7 @@
     },
     {
       "name": "github_create_issue",
-      "description": "Create a new issue in a repository.",
+      "description": "Open a new GitHub issue via the REST API (owner, repo, title, body, labels). Writes; confirm first.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -325,7 +325,7 @@
     },
     {
       "name": "github_add_issue_comment",
-      "description": "Add a comment to an issue or pull request.",
+      "description": "Comment on a GitHub issue or PR via the REST API by owner/repo/number. Writes; confirm first.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -383,7 +383,7 @@
     },
     {
       "name": "github_list_pull_requests",
-      "description": "List pull requests in a repository.",
+      "description": "List pull requests in a GitHub repo via the REST API by owner/repo; filter by state, paginate.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -455,7 +455,7 @@
     },
     {
       "name": "github_get_pull_request",
-      "description": "Get one pull request with full details.",
+      "description": "Get one GitHub pull request's full details via the REST API by owner/repo/number.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -510,7 +510,7 @@
     },
     {
       "name": "github_search_issues",
-      "description": "Search issues and pull requests across GitHub.",
+      "description": "Search all GitHub issues and PRs via the REST search API using q qualifiers (repo:, is:, author:).",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -569,7 +569,7 @@
     },
     {
       "name": "github_search_repos",
-      "description": "Search repositories across GitHub.",
+      "description": "Search repos across GitHub via the REST search API using q qualifiers (user:, language:, stars:).",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
