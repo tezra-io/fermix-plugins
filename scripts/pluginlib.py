@@ -284,6 +284,10 @@ def _validate_runtime(manifest):
         errors.append("runtime.command is required")
     elif any(ch.isspace() for ch in command):
         errors.append("runtime.command must be a single executable name (no whitespace)")
+    elif "/" in command or command in ("..", "."):
+        # A vendored command resolves under bin/<target>/; `/` or `..` would let
+        # it escape to a host executable like /bin/sh. Mirror the core decoder.
+        errors.append("runtime.command must be a bare executable name (no '/' or '..')")
     args = runtime.get("args", [])
     if not isinstance(args, list) or not all(isinstance(a, str) and a for a in args):
         errors.append("runtime.args must be a list of non-empty strings")
@@ -334,6 +338,23 @@ def _validate_config_entry(entry, seen):
     return errors
 
 
+def _path_within(plugin_dir, rel):
+    """True iff the manifest-relative path `rel` resolves inside `plugin_dir`.
+
+    Rejects absolute paths and `..` escapes so a manifest can't point skills or
+    interface assets at sibling plugins or repo files — the same content boundary
+    the Fermix installer enforces at install time.
+    """
+    if not isinstance(rel, str) or not rel:
+        return False
+    base = plugin_dir.resolve()
+    try:
+        (plugin_dir / rel).resolve().relative_to(base)
+    except (ValueError, OSError):
+        return False
+    return True
+
+
 def _validate_skills(manifest, plugin_dir):
     errors = []
     for skill in manifest.get("skills") or []:
@@ -342,7 +363,9 @@ def _validate_skills(manifest, plugin_dir):
             continue
         if skill["name"] == manifest.get("name"):
             errors.append(f"skill {skill['name']!r} must not equal the plugin name")
-        if not (plugin_dir / skill["path"]).is_file():
+        if not _path_within(plugin_dir, skill["path"]):
+            errors.append(f"skill path {skill['path']!r} must stay inside the plugin directory")
+        elif not (plugin_dir / skill["path"]).is_file():
             errors.append(f"skill path {skill['path']!r} does not exist")
     return errors
 
@@ -353,6 +376,9 @@ def _validate_interface(manifest, plugin_dir):
     for field in ("icon", "logo"):
         rel = interface.get(field)
         if rel is None:
+            continue
+        if not _path_within(plugin_dir, rel):
+            errors.append(f"interface.{field} {rel!r} must stay inside the plugin directory")
             continue
         path = plugin_dir / rel
         if not path.is_file():
