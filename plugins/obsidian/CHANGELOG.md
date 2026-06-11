@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2
+
+- Replace the logo with a clean 128px transparent PNG of the Obsidian mark.
+
 ## 1.0.1
 
 - Add the Obsidian logo (`assets/logo.png`) so the catalog card is branded.

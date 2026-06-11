@@ -4,7 +4,7 @@
   "display_name": "Obsidian",
   "description": "Search, read, create, and append to notes in your local Obsidian vault.",
   "category": "productivity",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "interface": {
     "short_description": "Use your Obsidian vault from Fermix",
     "developer_name": "Fermix",
