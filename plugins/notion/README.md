@@ -15,9 +15,10 @@ time):
    Marketplace listing; "Selected workspaces only" distribution is fine for
    personal use.
 2. Register the redirect URI **exactly** as
-   `http://127.0.0.1:1458/auth/callback` — Notion matches redirect URIs
-   exactly, port included, so the port must be `1458` (Fermix binds it fixed,
-   no fallback).
+   `http://localhost:1458/auth/callback` — use the `localhost` hostname, not
+   `127.0.0.1` (Notion forces `https` for IP-literal redirect URIs but allows
+   `http` for `localhost`). Notion matches redirect URIs exactly, port
+   included, so the port must be `1458` (Fermix binds it fixed, no fallback).
 3. Paste the integration's client id and client secret into the Fermix setup
    page (the secret is stored in your OS keychain). Token exchange uses HTTP
    Basic auth with `client_id:client_secret`, handled by Fermix.
