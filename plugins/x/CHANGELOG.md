@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1
+
+- Tighter, more token-efficient tool descriptions and skill trigger: dropped the
+  redundant "/Twitter" from every tool description (the `x_*` namespace already
+  disambiguates), trimmed the always-in-context skill frontmatter, and merged the
+  redundant write-discipline section into the tool list. No behavior change; cost
+  guardrails and the id workflow are unchanged.
+
 ## 1.0.0
 
 - Initial release: declarative http-rail plugin, zero code.

@@ -4,7 +4,7 @@
   "display_name": "X",
   "description": "Post, reply, search, like, and read on X (Twitter).",
   "category": "productivity",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "default_enabled": false,
   "interface": {
     "short_description": "Post, search, and read on X (Twitter)",
@@ -28,7 +28,7 @@
   "tools": [
     {
       "name": "x_whoami",
-      "description": "Get the authenticated X/Twitter user's id, username, and name. Call once, reuse the id.",
+      "description": "Get the authenticated X user's id, username, and name. Call once, reuse the id.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -50,7 +50,7 @@
     },
     {
       "name": "x_get_user",
-      "description": "Look up an X/Twitter user by @username — returns their numeric id and profile.",
+      "description": "Look up an X user by @username (no @); returns their numeric id and profile.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -83,7 +83,7 @@
     },
     {
       "name": "x_search_posts",
-      "description": "Search recent X/Twitter posts (last 7 days). Use this for X content, not web_search.",
+      "description": "Search recent X posts (last 7 days). Use this for X content, not web_search.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -135,7 +135,7 @@
     },
     {
       "name": "x_get_post",
-      "description": "Get one X/Twitter post by id, with its author. Use this for X content, not the browser.",
+      "description": "Get one X post by id, with author. Use the X tools for X content, not the browser.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -170,7 +170,7 @@
     },
     {
       "name": "x_user_posts",
-      "description": "List a user's recent X/Twitter posts by their numeric id (not @username).",
+      "description": "List a user's recent X posts by their numeric id (not @username).",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -221,7 +221,7 @@
     },
     {
       "name": "x_mentions",
-      "description": "List recent X/Twitter posts mentioning a user, by their numeric id.",
+      "description": "List recent X posts mentioning a user, by their numeric id.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -267,7 +267,7 @@
     },
     {
       "name": "x_home_timeline",
-      "description": "Read your X/Twitter home timeline (reverse-chronological); user_id must be you.",
+      "description": "Read your X home timeline (reverse-chronological). user_id must be you.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -313,7 +313,7 @@
     },
     {
       "name": "x_create_post",
-      "description": "Post to X/Twitter. Optional reply_to_post_id replies to a post. Confirm text first.",
+      "description": "Post to X. Optional reply_to_post_id replies to a post. Confirm text first.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -354,7 +354,7 @@
     },
     {
       "name": "x_delete_post",
-      "description": "Delete one of your X/Twitter posts by id. Irreversible — confirm first.",
+      "description": "Delete one of your X posts by id. Irreversible — confirm first.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -385,7 +385,7 @@
     },
     {
       "name": "x_like_post",
-      "description": "Like an X/Twitter post; user_id must be you, post_id is the target.",
+      "description": "Like an X post. user_id must be you; post_id is the target.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -424,7 +424,7 @@
     },
     {
       "name": "x_repost",
-      "description": "Repost (retweet) an X/Twitter post; user_id must be you, post_id is the target.",
+      "description": "Repost (retweet) an X post. user_id must be you; post_id is the target.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
