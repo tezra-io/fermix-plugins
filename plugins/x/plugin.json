@@ -1,0 +1,477 @@
+{
+  "schema_version": 2,
+  "name": "x",
+  "display_name": "X",
+  "description": "Post, reply, search, like, and read on X (Twitter).",
+  "category": "productivity",
+  "version": "1.0.0",
+  "default_enabled": false,
+  "interface": {
+    "short_description": "Post, search, and read on X (Twitter)",
+    "developer_name": "Fermix",
+    "brand_color": "#000000",
+    "logo": "assets/logo.svg",
+    "privacy_policy_url": "https://x.com/en/privacy",
+    "terms_of_service_url": "https://developer.x.com/en/developer-terms/agreement-and-policy"
+  },
+  "auth": {
+    "type": "oauth2",
+    "provider": "x",
+    "scopes": [
+      "tweet.read",
+      "users.read",
+      "tweet.write",
+      "like.write",
+      "offline.access"
+    ]
+  },
+  "tools": [
+    {
+      "name": "x_whoami",
+      "description": "Get the authenticated X/Twitter user's id, username, and name. Call once, reuse the id.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "tweet.read",
+        "users.read"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.x.com/2/users/me",
+        "success": [
+          200
+        ]
+      }
+    },
+    {
+      "name": "x_get_user",
+      "description": "Look up an X/Twitter user by @username — returns their numeric id and profile.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "tweet.read",
+        "users.read"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "Handle without the leading @ (1-15 chars, letters/digits/underscore)."
+          }
+        },
+        "required": [
+          "username"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.x.com/2/users/by/username/{username}",
+        "query": {
+          "user.fields": "description,public_metrics,verified,created_at"
+        },
+        "success": [
+          200
+        ]
+      }
+    },
+    {
+      "name": "x_search_posts",
+      "description": "Search recent X/Twitter posts (last 7 days). Use this for X content, not web_search.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "tweet.read",
+        "users.read"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query (<=512 chars). Operators: from:user, #tag, lang:en, -filter:retweets."
+          },
+          "max_results": {
+            "type": "integer",
+            "default": 10,
+            "description": "Posts to return, 10-100. Each returned post is billed; keep small unless asked."
+          },
+          "since_id": {
+            "type": "string",
+            "description": "Only posts newer than this post id."
+          },
+          "pagination_token": {
+            "type": "string",
+            "description": "meta.next_token from a prior call, to fetch the next (separately billed) page."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.x.com/2/tweets/search/recent",
+        "query": {
+          "query": "{query}",
+          "max_results": "{max_results}",
+          "since_id": "{since_id}",
+          "pagination_token": "{pagination_token}",
+          "expansions": "author_id",
+          "user.fields": "username,name",
+          "tweet.fields": "created_at,public_metrics"
+        },
+        "success": [
+          200
+        ]
+      }
+    },
+    {
+      "name": "x_get_post",
+      "description": "Get one X/Twitter post by id, with its author. Use this for X content, not the browser.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "tweet.read",
+        "users.read"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Post (tweet) id."
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.x.com/2/tweets/{id}",
+        "query": {
+          "expansions": "author_id",
+          "user.fields": "username,name",
+          "tweet.fields": "created_at,public_metrics"
+        },
+        "success": [
+          200
+        ]
+      }
+    },
+    {
+      "name": "x_user_posts",
+      "description": "List a user's recent X/Twitter posts by their numeric id (not @username).",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "tweet.read",
+        "users.read"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "Numeric user id (from x_whoami or x_get_user)."
+          },
+          "max_results": {
+            "type": "integer",
+            "default": 10,
+            "description": "Posts to return, 5-100. Each returned post is billed; keep small unless asked."
+          },
+          "exclude": {
+            "type": "string",
+            "description": "Optional comma list to drop: replies, retweets."
+          },
+          "pagination_token": {
+            "type": "string",
+            "description": "meta.next_token from a prior call, to fetch the next (separately billed) page."
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.x.com/2/users/{user_id}/tweets",
+        "query": {
+          "max_results": "{max_results}",
+          "exclude": "{exclude}",
+          "pagination_token": "{pagination_token}",
+          "expansions": "author_id",
+          "user.fields": "username,name",
+          "tweet.fields": "created_at,public_metrics"
+        },
+        "success": [
+          200
+        ]
+      }
+    },
+    {
+      "name": "x_mentions",
+      "description": "List recent X/Twitter posts mentioning a user, by their numeric id.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "tweet.read",
+        "users.read"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "Numeric user id (from x_whoami or x_get_user)."
+          },
+          "max_results": {
+            "type": "integer",
+            "default": 10,
+            "description": "Posts to return, 5-100. Each returned post is billed; keep small unless asked."
+          },
+          "pagination_token": {
+            "type": "string",
+            "description": "meta.next_token from a prior call, to fetch the next (separately billed) page."
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.x.com/2/users/{user_id}/mentions",
+        "query": {
+          "max_results": "{max_results}",
+          "pagination_token": "{pagination_token}",
+          "expansions": "author_id",
+          "user.fields": "username,name",
+          "tweet.fields": "created_at,public_metrics"
+        },
+        "success": [
+          200
+        ]
+      }
+    },
+    {
+      "name": "x_home_timeline",
+      "description": "Read your X/Twitter home timeline (reverse-chronological); user_id must be you.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "tweet.read",
+        "users.read"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "Your numeric user id (from x_whoami)."
+          },
+          "max_results": {
+            "type": "integer",
+            "default": 10,
+            "description": "Posts to return, 1-100. Each returned post is billed; keep small unless asked."
+          },
+          "pagination_token": {
+            "type": "string",
+            "description": "meta.next_token from a prior call, to fetch the next (separately billed) page."
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.x.com/2/users/{user_id}/timelines/reverse_chronological",
+        "query": {
+          "max_results": "{max_results}",
+          "pagination_token": "{pagination_token}",
+          "expansions": "author_id",
+          "user.fields": "username,name",
+          "tweet.fields": "created_at,public_metrics"
+        },
+        "success": [
+          200
+        ]
+      }
+    },
+    {
+      "name": "x_create_post",
+      "description": "Post to X/Twitter. Optional reply_to_post_id replies to a post. Confirm text first.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "tweet.write",
+        "tweet.read",
+        "users.read"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Post text (<=280 chars). A post containing a URL is billed ~13x a plain post."
+          },
+          "reply_to_post_id": {
+            "type": "string",
+            "description": "Optional post id to reply to."
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://api.x.com/2/tweets",
+        "body": {
+          "text": "{text}",
+          "reply": {
+            "in_reply_to_tweet_id": "{reply_to_post_id}"
+          }
+        },
+        "success": [
+          201
+        ]
+      }
+    },
+    {
+      "name": "x_delete_post",
+      "description": "Delete one of your X/Twitter posts by id. Irreversible — confirm first.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "tweet.write",
+        "tweet.read",
+        "users.read"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Post id to delete (must be your own post)."
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "request": {
+        "method": "DELETE",
+        "url": "https://api.x.com/2/tweets/{id}",
+        "success": [
+          200
+        ]
+      }
+    },
+    {
+      "name": "x_like_post",
+      "description": "Like an X/Twitter post; user_id must be you, post_id is the target.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "like.write",
+        "tweet.read",
+        "users.read"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "Your numeric user id (from x_whoami)."
+          },
+          "post_id": {
+            "type": "string",
+            "description": "Post id to like."
+          }
+        },
+        "required": [
+          "user_id",
+          "post_id"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://api.x.com/2/users/{user_id}/likes",
+        "body": {
+          "tweet_id": "{post_id}"
+        },
+        "success": [
+          200
+        ]
+      }
+    },
+    {
+      "name": "x_repost",
+      "description": "Repost (retweet) an X/Twitter post; user_id must be you, post_id is the target.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "tweet.write",
+        "tweet.read",
+        "users.read"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "Your numeric user id (from x_whoami)."
+          },
+          "post_id": {
+            "type": "string",
+            "description": "Post id to repost."
+          }
+        },
+        "required": [
+          "user_id",
+          "post_id"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://api.x.com/2/users/{user_id}/retweets",
+        "body": {
+          "tweet_id": "{post_id}"
+        },
+        "success": [
+          200
+        ]
+      }
+    }
+  ],
+  "skills": [
+    {
+      "name": "x-plugin",
+      "path": "skills/x-plugin/SKILL.md"
+    }
+  ],
+  "health_check": {
+    "kind": "local_readiness",
+    "requires_auth": true
+  },
+  "plugin_api": 2,
+  "min_core_version": "0.2.3"
+}
