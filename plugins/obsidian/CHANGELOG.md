@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- Add the Obsidian logo (`assets/logo.png`) so the catalog card is branded.
+
 ## 1.0.0
 
 - Initial release: first `mcp`-rail plugin — a first-party MCP stdio server
