@@ -1,0 +1,279 @@
+{
+  "schema_version": 2,
+  "name": "discord",
+  "display_name": "Discord",
+  "description": "Read Discord servers, channels, messages, and members.",
+  "category": "communication",
+  "version": "1.0.0",
+  "default_enabled": false,
+  "interface": {
+    "short_description": "Read your Discord servers from Fermix",
+    "developer_name": "Fermix",
+    "brand_color": "#5865F2",
+    "logo": "assets/logo.svg",
+    "privacy_policy_url": "https://discord.com/privacy",
+    "terms_of_service_url": "https://discord.com/terms"
+  },
+  "auth": {
+    "type": "api_key",
+    "key_name": "DISCORD_BOT_TOKEN",
+    "header": "authorization",
+    "scheme": "Bot",
+    "prompt": "Discord bot token (Developer Portal)",
+    "help_url": "https://discord.com/developers/docs/topics/oauth2#bot-authorization-flow",
+    "scopes": []
+  },
+  "tools": [
+    {
+      "name": "discord_list_guilds",
+      "description": "List Discord servers (guilds) the bot is a member of via the REST API.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "description": "Max guilds to return (max 200).",
+            "default": 100
+          },
+          "with_counts": {
+            "type": "boolean",
+            "description": "Include approximate member counts.",
+            "default": true
+          }
+        }
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://discord.com/api/v10/users/@me/guilds",
+        "headers": {
+          "user-agent": "DiscordBot (https://fermix.sh, 1.0)"
+        },
+        "query": {
+          "limit": "{limit}",
+          "with_counts": "{with_counts}"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "[*]",
+          "fields": [
+            "id",
+            "name",
+            "owner",
+            "approximate_member_count"
+          ]
+        }
+      }
+    },
+    {
+      "name": "discord_get_guild",
+      "description": "Get one Discord server (guild) by id via the REST API, with member counts.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "guild_id": {
+            "type": "string",
+            "description": "Guild (server) id snowflake."
+          }
+        },
+        "required": [
+          "guild_id"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://discord.com/api/v10/guilds/{guild_id}",
+        "headers": {
+          "user-agent": "DiscordBot (https://fermix.sh, 1.0)"
+        },
+        "query": {
+          "with_counts": "true"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "fields": [
+            "id",
+            "name",
+            "description",
+            "approximate_member_count",
+            "approximate_presence_count",
+            "owner_id"
+          ]
+        }
+      }
+    },
+    {
+      "name": "discord_list_channels",
+      "description": "List channels in a Discord server (guild) by id via the REST API.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "guild_id": {
+            "type": "string",
+            "description": "Guild (server) id snowflake."
+          }
+        },
+        "required": [
+          "guild_id"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://discord.com/api/v10/guilds/{guild_id}/channels",
+        "headers": {
+          "user-agent": "DiscordBot (https://fermix.sh, 1.0)"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "[*]",
+          "fields": [
+            "id",
+            "name",
+            "type",
+            "parent_id",
+            "topic",
+            "position"
+          ]
+        }
+      }
+    },
+    {
+      "name": "discord_channel_messages",
+      "description": "Read recent messages from a Discord channel by id via the REST API.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string",
+            "description": "Channel id snowflake."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Messages per page (max 100).",
+            "default": 50
+          },
+          "before": {
+            "type": "string",
+            "description": "Only messages before this id."
+          },
+          "after": {
+            "type": "string",
+            "description": "Only messages after this id."
+          }
+        },
+        "required": [
+          "channel_id"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://discord.com/api/v10/channels/{channel_id}/messages",
+        "headers": {
+          "user-agent": "DiscordBot (https://fermix.sh, 1.0)"
+        },
+        "query": {
+          "limit": "{limit}",
+          "before": "{before}",
+          "after": "{after}"
+        },
+        "success": [
+          200
+        ],
+        "paginate": {
+          "mode": "id_window",
+          "id_field": "id",
+          "cursor_param": "before",
+          "cursor_in": "query",
+          "max_pages": 5
+        },
+        "extract": {
+          "path": "[*]",
+          "fields": [
+            "id",
+            "content",
+            "author",
+            "timestamp",
+            "edited_timestamp",
+            "attachments"
+          ]
+        }
+      }
+    },
+    {
+      "name": "discord_list_members",
+      "description": "List members of a Discord server (guild) by id via the REST API.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "guild_id": {
+            "type": "string",
+            "description": "Guild (server) id snowflake."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Members per page (max 1000).",
+            "default": 100
+          },
+          "after": {
+            "type": "string",
+            "description": "Only members after this user id."
+          }
+        },
+        "required": [
+          "guild_id"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://discord.com/api/v10/guilds/{guild_id}/members",
+        "headers": {
+          "user-agent": "DiscordBot (https://fermix.sh, 1.0)"
+        },
+        "query": {
+          "limit": "{limit}",
+          "after": "{after}"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "[*]",
+          "fields": [
+            "user",
+            "nick",
+            "roles",
+            "joined_at"
+          ]
+        }
+      }
+    }
+  ],
+  "skills": [
+    {
+      "name": "discord-plugin",
+      "path": "skills/discord-plugin/SKILL.md"
+    }
+  ],
+  "plugin_api": 2,
+  "min_core_version": "0.4.0"
+}

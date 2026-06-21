@@ -1,0 +1,303 @@
+{
+  "schema_version": 2,
+  "name": "slack",
+  "display_name": "Slack",
+  "description": "Read Slack channels, messages, threads, and members.",
+  "category": "communication",
+  "version": "1.0.0",
+  "default_enabled": false,
+  "interface": {
+    "short_description": "Read your Slack workspace from Fermix",
+    "developer_name": "Fermix",
+    "brand_color": "#611F69",
+    "logo": "assets/logo.svg",
+    "privacy_policy_url": "https://slack.com/trust/privacy/privacy-policy",
+    "terms_of_service_url": "https://slack.com/terms-of-service/api"
+  },
+  "auth": {
+    "type": "api_key",
+    "key_name": "SLACK_BOT_TOKEN",
+    "header": "authorization",
+    "scheme": "Bearer",
+    "prompt": "Slack Bot User OAuth token (xoxb-...)",
+    "help_url": "https://api.slack.com/authentication/token-types#bot",
+    "scopes": []
+  },
+  "health_check": {
+    "url": "https://slack.com/api/auth.test",
+    "method": "POST",
+    "success": [
+      200
+    ]
+  },
+  "tools": [
+    {
+      "name": "slack_list_channels",
+      "description": "List Slack channels (public, private, DMs) via the Web API; paginate with cursor.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "channels:read",
+        "groups:read"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "types": {
+            "type": "string",
+            "description": "Comma-separated channel types.",
+            "default": "public_channel,private_channel"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Results per page (max 1000).",
+            "default": 100
+          },
+          "exclude_archived": {
+            "type": "boolean",
+            "description": "Omit archived channels.",
+            "default": true
+          }
+        }
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://slack.com/api/conversations.list",
+        "query": {
+          "types": "{types}",
+          "limit": "{limit}",
+          "exclude_archived": "{exclude_archived}"
+        },
+        "success": [
+          200
+        ],
+        "paginate": {
+          "max_pages": 5,
+          "items_path": "channels",
+          "cursor_path": "response_metadata.next_cursor",
+          "cursor_param": "cursor",
+          "cursor_in": "query",
+          "fields": [
+            "id",
+            "name",
+            "is_private",
+            "is_archived",
+            "num_members",
+            "topic",
+            "purpose"
+          ]
+        }
+      }
+    },
+    {
+      "name": "slack_channel_history",
+      "description": "Read recent messages from a Slack channel by id via the Web API.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "channels:history",
+        "groups:history"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel id (e.g. C0123ABCD)."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Messages per page (max 1000).",
+            "default": 50
+          },
+          "oldest": {
+            "type": "string",
+            "description": "Only messages after this ts."
+          },
+          "latest": {
+            "type": "string",
+            "description": "Only messages before this ts."
+          }
+        },
+        "required": [
+          "channel"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://slack.com/api/conversations.history",
+        "query": {
+          "channel": "{channel}",
+          "limit": "{limit}",
+          "oldest": "{oldest}",
+          "latest": "{latest}"
+        },
+        "success": [
+          200
+        ],
+        "paginate": {
+          "max_pages": 5,
+          "items_path": "messages",
+          "cursor_path": "response_metadata.next_cursor",
+          "cursor_param": "cursor",
+          "cursor_in": "query",
+          "fields": [
+            "type",
+            "user",
+            "text",
+            "ts",
+            "thread_ts",
+            "reply_count",
+            "reactions"
+          ]
+        }
+      }
+    },
+    {
+      "name": "slack_channel_replies",
+      "description": "Read a Slack thread's replies by channel id and parent ts via the Web API.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "channels:history",
+        "groups:history"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel id (e.g. C0123ABCD)."
+          },
+          "ts": {
+            "type": "string",
+            "description": "Parent message ts of the thread."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Replies per page (max 1000).",
+            "default": 50
+          }
+        },
+        "required": [
+          "channel",
+          "ts"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://slack.com/api/conversations.replies",
+        "query": {
+          "channel": "{channel}",
+          "ts": "{ts}",
+          "limit": "{limit}"
+        },
+        "success": [
+          200
+        ],
+        "paginate": {
+          "max_pages": 5,
+          "items_path": "messages",
+          "cursor_path": "response_metadata.next_cursor",
+          "cursor_param": "cursor",
+          "cursor_in": "query",
+          "fields": [
+            "type",
+            "user",
+            "text",
+            "ts",
+            "thread_ts",
+            "reply_count",
+            "reactions"
+          ]
+        }
+      }
+    },
+    {
+      "name": "slack_team_info",
+      "description": "Get the connected Slack workspace's info (name, domain, id) via the Web API.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "team:read"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://slack.com/api/team.info",
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "team",
+          "fields": [
+            "id",
+            "name",
+            "domain",
+            "email_domain"
+          ]
+        }
+      }
+    },
+    {
+      "name": "slack_list_members",
+      "description": "List members of the connected Slack workspace via the Web API; paginate with cursor.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "users:read"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "description": "Members per page (max 1000).",
+            "default": 100
+          }
+        }
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://slack.com/api/users.list",
+        "query": {
+          "limit": "{limit}"
+        },
+        "success": [
+          200
+        ],
+        "paginate": {
+          "max_pages": 5,
+          "items_path": "members",
+          "cursor_path": "response_metadata.next_cursor",
+          "cursor_param": "cursor",
+          "cursor_in": "query",
+          "fields": [
+            "id",
+            "name",
+            "real_name",
+            "is_bot",
+            "deleted",
+            "tz"
+          ]
+        }
+      }
+    }
+  ],
+  "skills": [
+    {
+      "name": "slack-plugin",
+      "path": "skills/slack-plugin/SKILL.md"
+    }
+  ],
+  "plugin_api": 2,
+  "min_core_version": "0.4.0"
+}
