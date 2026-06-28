@@ -1,0 +1,437 @@
+{
+  "schema_version": 2,
+  "name": "agentmail",
+  "display_name": "AgentMail",
+  "description": "Create agent-owned email inboxes; send, read, and reply to mail.",
+  "category": "productivity",
+  "version": "1.0.0",
+  "default_enabled": false,
+  "interface": {
+    "short_description": "Give the agent its own email inboxes",
+    "developer_name": "Fermix",
+    "brand_color": "#000000",
+    "logo": "assets/logo.png",
+    "privacy_policy_url": "https://agentmail.to/privacy",
+    "terms_of_service_url": "https://agentmail.to/terms"
+  },
+  "auth": {
+    "type": "api_key",
+    "key_name": "AGENTMAIL_API_KEY",
+    "header": "authorization",
+    "scheme": "Bearer",
+    "prompt": "AgentMail API key (console.agentmail.to)",
+    "help_url": "https://docs.agentmail.to/quickstart",
+    "scopes": []
+  },
+  "tools": [
+    {
+      "name": "agentmail_create_inbox",
+      "description": "Create a new agent-owned email inbox. Writes; confirm first.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "Local part of the address."
+          },
+          "domain": {
+            "type": "string",
+            "description": "Sending domain."
+          },
+          "display_name": {
+            "type": "string",
+            "description": "Display name on outbound mail."
+          },
+          "client_id": {
+            "type": "string",
+            "description": "Idempotency key for the inbox."
+          }
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://api.agentmail.to/v0/inboxes",
+        "body": {
+          "username": "{username}",
+          "domain": "{domain}",
+          "display_name": "{display_name}",
+          "client_id": "{client_id}"
+        },
+        "success": [
+          200,
+          201
+        ],
+        "extract": {
+          "fields": [
+            "inbox_id",
+            "display_name",
+            "created_at"
+          ]
+        }
+      }
+    },
+    {
+      "name": "agentmail_list_inboxes",
+      "description": "List the agent-owned email inboxes via the API; paginate with page token.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "description": "Inboxes per page.",
+            "default": 10
+          }
+        }
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.agentmail.to/v0/inboxes",
+        "query": {
+          "limit": "{limit}"
+        },
+        "success": [
+          200
+        ],
+        "paginate": {
+          "max_pages": 5,
+          "items_path": "inboxes",
+          "cursor_path": "next_page_token",
+          "cursor_param": "page_token",
+          "cursor_in": "query",
+          "fields": [
+            "inbox_id",
+            "display_name",
+            "created_at"
+          ]
+        }
+      }
+    },
+    {
+      "name": "agentmail_list_messages",
+      "description": "List messages in an inbox; use 'after' to poll inbound mail. Paginates.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inbox_id": {
+            "type": "string",
+            "description": "Inbox id to read."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Messages per page.",
+            "default": 10
+          },
+          "after": {
+            "type": "string",
+            "description": "Only messages after this timestamp."
+          },
+          "from": {
+            "type": "string",
+            "description": "Filter by sender address."
+          }
+        },
+        "required": [
+          "inbox_id"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.agentmail.to/v0/inboxes/{inbox_id}/messages",
+        "query": {
+          "limit": "{limit}",
+          "after": "{after}",
+          "from": "{from}"
+        },
+        "success": [
+          200
+        ],
+        "paginate": {
+          "max_pages": 5,
+          "items_path": "messages",
+          "cursor_path": "next_page_token",
+          "cursor_param": "page_token",
+          "cursor_in": "query",
+          "fields": [
+            "message_id",
+            "thread_id",
+            "from",
+            "to",
+            "subject",
+            "preview",
+            "timestamp"
+          ]
+        }
+      }
+    },
+    {
+      "name": "agentmail_get_message",
+      "description": "Get one email message's full content (body, headers) by inbox and message id.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inbox_id": {
+            "type": "string",
+            "description": "Inbox id holding the message."
+          },
+          "message_id": {
+            "type": "string",
+            "description": "Message id to fetch."
+          }
+        },
+        "required": [
+          "inbox_id",
+          "message_id"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.agentmail.to/v0/inboxes/{inbox_id}/messages/{message_id}",
+        "success": [
+          200
+        ],
+        "extract": {
+          "fields": [
+            "message_id",
+            "thread_id",
+            "from",
+            "to",
+            "cc",
+            "subject",
+            "text",
+            "html",
+            "attachments",
+            "timestamp"
+          ]
+        }
+      }
+    },
+    {
+      "name": "agentmail_send_message",
+      "description": "Send an email from an agent inbox. Writes; confirm first.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inbox_id": {
+            "type": "string",
+            "description": "Inbox id to send from."
+          },
+          "to": {
+            "type": "string",
+            "description": "Recipient address(es)."
+          },
+          "subject": {
+            "type": "string",
+            "description": "Subject line."
+          },
+          "text": {
+            "type": "string",
+            "description": "Plain-text body."
+          },
+          "html": {
+            "type": "string",
+            "description": "HTML body."
+          },
+          "cc": {
+            "type": "string",
+            "description": "Cc address(es)."
+          },
+          "bcc": {
+            "type": "string",
+            "description": "Bcc address(es)."
+          }
+        },
+        "required": [
+          "inbox_id",
+          "to"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://api.agentmail.to/v0/inboxes/{inbox_id}/messages/send",
+        "body": {
+          "to": "{to}",
+          "subject": "{subject}",
+          "text": "{text}",
+          "html": "{html}",
+          "cc": "{cc}",
+          "bcc": "{bcc}"
+        },
+        "success": [
+          200,
+          201
+        ],
+        "extract": {
+          "fields": [
+            "message_id",
+            "thread_id"
+          ]
+        }
+      }
+    },
+    {
+      "name": "agentmail_reply",
+      "description": "Reply to a message in an inbox; threads server-side. Writes; confirm first.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inbox_id": {
+            "type": "string",
+            "description": "Inbox id holding the message."
+          },
+          "message_id": {
+            "type": "string",
+            "description": "Message id to reply to."
+          },
+          "text": {
+            "type": "string",
+            "description": "Plain-text reply body."
+          },
+          "html": {
+            "type": "string",
+            "description": "HTML reply body."
+          },
+          "cc": {
+            "type": "string",
+            "description": "Cc address(es)."
+          }
+        },
+        "required": [
+          "inbox_id",
+          "message_id"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://api.agentmail.to/v0/inboxes/{inbox_id}/messages/{message_id}/reply",
+        "body": {
+          "text": "{text}",
+          "html": "{html}",
+          "cc": "{cc}"
+        },
+        "success": [
+          200,
+          201
+        ],
+        "extract": {
+          "fields": [
+            "message_id",
+            "thread_id"
+          ]
+        }
+      }
+    },
+    {
+      "name": "agentmail_list_threads",
+      "description": "List conversation threads in an inbox via the API; paginate with page token.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inbox_id": {
+            "type": "string",
+            "description": "Inbox id to read."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Threads per page.",
+            "default": 10
+          }
+        },
+        "required": [
+          "inbox_id"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.agentmail.to/v0/inboxes/{inbox_id}/threads",
+        "query": {
+          "limit": "{limit}"
+        },
+        "success": [
+          200
+        ],
+        "paginate": {
+          "max_pages": 5,
+          "items_path": "threads",
+          "cursor_path": "next_page_token",
+          "cursor_param": "page_token",
+          "cursor_in": "query",
+          "fields": [
+            "thread_id",
+            "subject",
+            "message_count",
+            "updated_at"
+          ]
+        }
+      }
+    },
+    {
+      "name": "agentmail_get_thread",
+      "description": "Get one conversation thread's messages by inbox and thread id via the API.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inbox_id": {
+            "type": "string",
+            "description": "Inbox id holding the thread."
+          },
+          "thread_id": {
+            "type": "string",
+            "description": "Thread id to fetch."
+          }
+        },
+        "required": [
+          "inbox_id",
+          "thread_id"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.agentmail.to/v0/inboxes/{inbox_id}/threads/{thread_id}",
+        "success": [
+          200
+        ],
+        "extract": {
+          "fields": [
+            "thread_id",
+            "subject",
+            "messages",
+            "message_count",
+            "updated_at"
+          ]
+        }
+      }
+    }
+  ],
+  "skills": [
+    {
+      "name": "agentmail-plugin",
+      "path": "skills/agentmail-plugin/SKILL.md"
+    }
+  ],
+  "plugin_api": 2,
+  "min_core_version": "0.4.0"
+}
