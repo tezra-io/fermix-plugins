@@ -1,101 +1,283 @@
 name: release-plugin
 
 # Per-plugin release. Tag a merged commit `<name>/v<version>` (matching the
-# manifest version) and push the tag. Produces a signed, boundary-checked
-# tarball attached to a GitHub Release. The fermix repo's catalog
+# manifest version) and push the tag. Produces signed, boundary-checked
+# tarball(s) attached to a GitHub Release. The fermix repo's catalog
 # (priv/plugins/index.json) pins these artifacts via its sync script.
+#
+# Two plugin shapes:
+#   - declarative (no native-builds/<name>.json): one tarball
+#     `<name>-<version>.tar.gz` packed from plugins/<name> (unchanged behavior).
+#   - native (native-builds/<name>.json present): the binary is cross-compiled
+#     per target in the `build` matrix and one tarball is published PER target —
+#     `<name>-<version>-<target>.tar.gz`, each carrying plugin.json +
+#     bin/<target>/<binary>. The fermix installer selects the host's artifact.
+#
+# Cosign identity is preserved: `cosign sign-blob` runs in THIS workflow file
+# under the tag, so the fermix sync script's pin
+# (release-plugin.yml@refs/tags/<name>/v<version>) keeps verifying. Do NOT move
+# the signing step into a reusable/called workflow.
+#
+# `workflow_dispatch` runs meta + build only (no publish) to dry-run a native
+# cross-build before tagging.
 on:
   push:
     tags: ["*/v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      plugin:
+        description: "Native plugin name to dry-run cross-build (no publish)"
+        required: true
 
 permissions:
   contents: write
   id-token: write
 
 jobs:
-  release:
-    name: validate · pack · sign · publish
+  meta:
+    name: resolve name + native matrix
     runs-on: ubuntu-24.04
+    outputs:
+      name: ${{ steps.meta.outputs.name }}
+      version: ${{ steps.meta.outputs.version }}
+      dir: ${{ steps.meta.outputs.dir }}
+      tarball: ${{ steps.meta.outputs.tarball }}
+      native: ${{ steps.meta.outputs.native }}
+      matrix: ${{ steps.meta.outputs.matrix }}
+      repo: ${{ steps.meta.outputs.repo }}
+      ref: ${{ steps.meta.outputs.ref }}
+      crate_path: ${{ steps.meta.outputs.crate_path }}
+      binary: ${{ steps.meta.outputs.binary }}
     steps:
       - uses: actions/checkout@v4
 
+      - name: Resolve plugin + build matrix
+        id: meta
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          DISPATCH_PLUGIN: ${{ github.event.inputs.plugin }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, sys
+
+          event = os.environ["EVENT"]
+          # target -> rust triple. Runner comes from native-builds/<name>.json.
+          TRIPLES = {
+              "macos-aarch64": "aarch64-apple-darwin",
+              "macos-x86_64": "x86_64-apple-darwin",
+              "linux-x86_64": "x86_64-unknown-linux-gnu",
+              "linux-aarch64": "aarch64-unknown-linux-gnu",
+          }
+          NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+
+          def fail(msg):
+              print(f"::error::{msg}")
+              sys.exit(1)
+
+          if event == "push":
+              m = re.match(r"^([a-z][a-z0-9_]{0,63})/v([0-9]+\.[0-9]+\.[0-9]+)$", os.environ["REF_NAME"])
+              if not m:
+                  fail(f"Tag '{os.environ['REF_NAME']}' must be <name>/v<semver> (e.g. github/v1.2.0).")
+              name, version = m.group(1), m.group(2)
+          else:
+              name = (os.environ.get("DISPATCH_PLUGIN") or "").strip()
+              if not NAME_RE.match(name):
+                  fail(f"workflow_dispatch input 'plugin' = '{name}' must match {NAME_RE.pattern}.")
+              version = None  # filled from the manifest below
+
+          manifest_path = os.path.join("plugins", name, "plugin.json")
+          if not os.path.isfile(manifest_path):
+              fail(f"no manifest at {manifest_path}")
+          manifest = json.load(open(manifest_path))
+          mver = manifest.get("version")
+          if event == "push" and mver != version:
+              fail(f"plugin.json version {mver} != tag version {version}.")
+          version = version or mver
+          if not version:
+              fail("manifest has no version")
+
+          descriptor_path = os.path.join("native-builds", f"{name}.json")
+          native = os.path.isfile(descriptor_path)
+          matrix = {"include": []}
+          repo = ref = crate_path = binary = ""
+          if native:
+              d = json.load(open(descriptor_path))
+              repo, ref = d["repo"], d["ref"]
+              crate_path, binary = d["crate_path"], d["binary"]
+              for target, runner in d["targets"].items():
+                  triple = TRIPLES.get(target)
+                  if not triple:
+                      fail(f"unknown target '{target}' in {descriptor_path}")
+                  matrix["include"].append({"target": target, "runner": runner, "triple": triple})
+              if not matrix["include"]:
+                  fail(f"{descriptor_path} declares no targets")
+
+          out = {
+              "name": name,
+              "version": version,
+              "dir": f"plugins/{name}",
+              "tarball": f"{name}-{version}.tar.gz",
+              "native": "true" if native else "false",
+              "matrix": json.dumps(matrix),
+              "repo": repo,
+              "ref": ref,
+              "crate_path": crate_path,
+              "binary": binary,
+          }
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              for k, v in out.items():
+                  fh.write(f"{k}={v}\n")
+          print(json.dumps({k: v for k, v in out.items() if k != "matrix"}, indent=2))
+          print("matrix:", out["matrix"])
+          PY
+
+  build:
+    name: build ${{ matrix.target }}
+    needs: meta
+    if: needs.meta.outputs.native == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.meta.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout native source
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.meta.outputs.repo }}
+          ref: ${{ needs.meta.outputs.ref }}
+          path: src
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.triple }}
+
+      - name: Linux build deps
+        if: startsWith(matrix.runner, 'ubuntu')
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxdo-dev libxcb1-dev libxcb-randr0-dev libxcb-shm0-dev \
+            libxcb-xfixes0-dev libx11-dev libxext-dev
+
+      - name: Cargo build (release, locked)
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "12.3"
+          CRATE_PATH: ${{ needs.meta.outputs.crate_path }}
+          TRIPLE: ${{ matrix.triple }}
+        run: |
+          set -euo pipefail
+          cargo build --release --locked \
+            --manifest-path "src/$CRATE_PATH/Cargo.toml" \
+            --target "$TRIPLE"
+
+      - name: Stage binary
+        env:
+          CRATE_PATH: ${{ needs.meta.outputs.crate_path }}
+          TRIPLE: ${{ matrix.triple }}
+          BINARY: ${{ needs.meta.outputs.binary }}
+        run: |
+          set -euo pipefail
+          bin="src/$CRATE_PATH/target/$TRIPLE/release/$BINARY"
+          test -x "$bin" || { echo "::error::built binary missing/not executable: $bin"; exit 1; }
+          mkdir -p out
+          cp "$bin" "out/$BINARY"
+          chmod 0755 "out/$BINARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bin-${{ matrix.target }}
+          path: out/${{ needs.meta.outputs.binary }}
+          if-no-files-found: error
+
+  release:
+    name: pack · sign · publish
+    needs: [meta, build]
+    # Only on a real tag push; never on the dispatch dry-run. `always()` lets it
+    # run when `build` was skipped (declarative plugin: native=false).
+    if: github.event_name == 'push' && always() && (needs.build.result == 'success' || needs.build.result == 'skipped')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - uses: sigstore/cosign-installer@v3
 
-      # Parse `<name>/v<version>` from the tag into outputs. The tag is
-      # developer-controlled (push access), but we still keep it out of any
-      # `run:` interpolation: it enters via $GITHUB_REF_NAME (env), is regex-
-      # validated, and only validated capture groups are exported.
-      - name: Parse and validate tag
-        id: tag
+      - name: Download native binaries (per target)
+        if: needs.meta.outputs.native == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bin-*
+          path: artifacts
+
+      - name: Assemble + validate
         env:
-          REF_NAME: ${{ github.ref_name }}
+          NATIVE: ${{ needs.meta.outputs.native }}
+          DIR: ${{ needs.meta.outputs.dir }}
+          BINARY: ${{ needs.meta.outputs.binary }}
         run: |
           set -euo pipefail
-          if [[ ! "$REF_NAME" =~ ^([a-z][a-z0-9_]{0,63})/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-            echo "::error::Tag '$REF_NAME' must be <name>/v<semver> (e.g. github/v1.2.0)."
-            exit 1
+          if [ "$NATIVE" = "true" ]; then
+            for d in artifacts/bin-*; do
+              target="${d#artifacts/bin-}"
+              install -D -m 0755 "$d/$BINARY" "$DIR/bin/$target/$BINARY"
+            done
           fi
-          name="${BASH_REMATCH[1]}"
-          version="${BASH_REMATCH[2]}"
-          echo "name=$name" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "dir=plugins/$name" >> "$GITHUB_OUTPUT"
-          echo "tarball=$name-$version.tar.gz" >> "$GITHUB_OUTPUT"
+          python3 scripts/validate_plugin.py "$DIR"
 
-      - name: Verify manifest version matches tag
+      - name: Pack, boundary-check, sign, hash
+        id: pack
         env:
-          DIR: ${{ steps.tag.outputs.dir }}
-          VERSION: ${{ steps.tag.outputs.version }}
+          NATIVE: ${{ needs.meta.outputs.native }}
+          NAME: ${{ needs.meta.outputs.name }}
+          VERSION: ${{ needs.meta.outputs.version }}
+          DIR: ${{ needs.meta.outputs.dir }}
+          BINARY: ${{ needs.meta.outputs.binary }}
         run: |
           set -euo pipefail
-          manifest_version="$(python3 -c "import json,os,sys; print(json.load(open(os.path.join(os.environ['DIR'],'plugin.json')))['version'])")"
-          if [ "$manifest_version" != "$VERSION" ]; then
-            echo "::error::plugin.json version $manifest_version != tag version $VERSION."
-            exit 1
+
+          sign_one() {  # $1 = tarball path
+            local tb="$1"
+            tar -tzf "$tb" > listing.txt
+            python3 scripts/validate_plugin.py --archive listing.txt "$DIR"
+            cosign sign-blob --yes \
+              --output-signature "${tb}.sig" \
+              --output-certificate "${tb}.pem" \
+              "$tb"
+            sha256sum "$tb" > "${tb}.sha256"
+            { echo "$tb"; echo "${tb}.sig"; echo "${tb}.pem"; echo "${tb}.sha256"; } >> files.txt
+          }
+
+          : > files.txt
+          if [ "$NATIVE" = "true" ]; then
+            # One signed tarball per target: plugin.json + bin/<target>/<binary>.
+            for td in "$DIR"/bin/*/; do
+              target="$(basename "$td")"
+              stage="stage-$target"
+              rm -rf "$stage"; mkdir -p "$stage/bin/$target"
+              cp "$DIR/plugin.json" "$stage/plugin.json"
+              cp "$td$BINARY" "$stage/bin/$target/$BINARY"
+              chmod 0755 "$stage/bin/$target/$BINARY"
+              tb="${NAME}-${VERSION}-${target}.tar.gz"
+              tar -C "$stage" -czf "$tb" .
+              sign_one "$tb"
+            done
+          else
+            tb="${NAME}-${VERSION}.tar.gz"
+            tar -C "$DIR" -czf "$tb" .
+            sign_one "$tb"
           fi
-
-      - name: Validate manifest
-        env:
-          DIR: ${{ steps.tag.outputs.dir }}
-        run: python3 scripts/validate_plugin.py "$DIR"
-
-      - name: Pack tarball (manifest at archive root)
-        env:
-          DIR: ${{ steps.tag.outputs.dir }}
-          TARBALL: ${{ steps.tag.outputs.tarball }}
-        run: tar -C "$DIR" -czf "$TARBALL" .
-
-      - name: Content-boundary check the packed artifact (pre-sign)
-        env:
-          DIR: ${{ steps.tag.outputs.dir }}
-          TARBALL: ${{ steps.tag.outputs.tarball }}
-        run: |
-          set -euo pipefail
-          tar -tzf "$TARBALL" > artifact-listing.txt
-          python3 scripts/validate_plugin.py --archive artifact-listing.txt "$DIR"
-
-      - name: Sign and hash
-        env:
-          TARBALL: ${{ steps.tag.outputs.tarball }}
-        run: |
-          set -euo pipefail
-          cosign sign-blob --yes \
-            --output-signature "${TARBALL}.sig" \
-            --output-certificate "${TARBALL}.pem" \
-            "$TARBALL"
-          sha256sum "$TARBALL" > "${TARBALL}.sha256"
+          {
+            echo "files<<EOF"
+            cat files.txt
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Publish plugin release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           fail_on_unmatched_files: true
-          files: |
-            ${{ steps.tag.outputs.tarball }}
-            ${{ steps.tag.outputs.tarball }}.sha256
-            ${{ steps.tag.outputs.tarball }}.sig
-            ${{ steps.tag.outputs.tarball }}.pem
+          files: ${{ steps.pack.outputs.files }}
