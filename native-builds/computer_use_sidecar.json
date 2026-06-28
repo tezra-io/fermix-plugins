@@ -5,7 +5,6 @@
   "binary": "fermix-computer-use",
   "targets": {
     "macos-aarch64": "macos-14",
-    "macos-x86_64": "macos-13",
     "linux-x86_64": "ubuntu-24.04"
   }
 }
