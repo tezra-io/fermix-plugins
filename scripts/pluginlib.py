@@ -74,7 +74,7 @@ def validate_plugin_dir(plugin_dir: Path) -> dict:
     errors = []
     errors += _validate_top_fields(manifest, plugin_dir)
     errors += _validate_auth(manifest)
-    errors += _validate_tools(manifest)
+    errors += _validate_tools(manifest, plugin_dir)
     errors += _validate_runtime(manifest)
     errors += _validate_config(manifest)
     errors += _validate_skills(manifest, plugin_dir)
@@ -184,9 +184,19 @@ def _validate_auth(manifest):
     return errors
 
 
-def _validate_tools(manifest):
+def _validate_tools(manifest, plugin_dir):
     tools = manifest.get("tools")
-    if not isinstance(tools, list) or not tools:
+    if tools is None or (isinstance(tools, list) and not tools):
+        # A native-binary plugin (ships a signed bin/<target>/ tree, spawned by
+        # core's PortDriver, exposing no agent tools) legitimately declares no
+        # tools. It is identified by a maintainer-authored native-builds/<name>.json
+        # build descriptor at the repo root; every other plugin must declare >= 1.
+        name = manifest.get("name") or ""
+        descriptor = plugin_dir.parent.parent / "native-builds" / f"{name}.json"
+        if descriptor.is_file():
+            return []
+        return ["tools must be a non-empty list"]
+    if not isinstance(tools, list):
         return ["tools must be a non-empty list"]
     errors = []
     name = manifest.get("name") or ""

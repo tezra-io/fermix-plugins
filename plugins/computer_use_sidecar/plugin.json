@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "name": "computer_use_sidecar",
+  "display_name": "Computer Use Sidecar",
+  "description": "Signed native host-control sidecar (screenshot + input) for Fermix computer-use. Off by default; requires explicit enable and OS permission grants.",
+  "category": "system",
+  "version": "0.1.0",
+  "min_core_version": "0.4.0",
+  "plugin_api": 2,
+  "auth": { "type": "none" },
+  "tools": []
+}
