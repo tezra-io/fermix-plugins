@@ -1,0 +1,10 @@
+{
+  "repo": "tezra-io/fermix",
+  "ref": "86793a84d29a7f4cd3b4d5b8a6b0fce52c0a3d0f",
+  "crate_path": "native/computer-use-sidecar",
+  "binary": "fermix-computer-use",
+  "targets": {
+    "macos-aarch64": "macos-14",
+    "linux-x86_64": "ubuntu-24.04"
+  }
+}
