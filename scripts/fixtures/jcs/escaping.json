@@ -1,0 +1,7 @@
+{
+  "name": "escaping",
+  "description": "Only \", \\ and U+0000-U+001F are escaped (lowercase \\u00xx); DEL (U+007F) is emitted literally.",
+  "input_json": "{\"q\":\"a\\\"b\",\"bs\":\"a\\\\b\",\"nl\":\"a\\nb\",\"ctrl\":\"\\u0000\\u001f\",\"del\":\"\\u007f\",\"tabcr\":\"\\t\\r\",\"bf\":\"\\b\\f\"}",
+  "expected": "{\"bf\":\"\\b\\f\",\"bs\":\"a\\\\b\",\"ctrl\":\"\\u0000\\u001f\",\"del\":\"\u007f\",\"nl\":\"a\\nb\",\"q\":\"a\\\"b\",\"tabcr\":\"\\t\\r\"}",
+  "expected_sha256": "81e650e0f0975c3cf608a149eaffb2e4a404207aea7a0335032e0978e46ff27e"
+}

@@ -1,0 +1,33 @@
+{
+  "name": "descriptor",
+  "description": "The signed MCP security descriptor: {name, inputSchema, outputSchema, annotations}. expected_sha256 is the value a manifest must declare as descriptor_sha256.",
+  "input_json": "{\"outputSchema\":{\"type\":\"object\",\"properties\":{\"items\":{\"type\":\"array\"}}},\"name\":\"eden_list_workspace_items\",\"annotations\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"workspaceId\":{\"type\":\"string\"},\"limit\":{\"type\":\"integer\"}},\"required\":[\"workspaceId\"]}}",
+  "expected": "{\"annotations\":null,\"inputSchema\":{\"properties\":{\"limit\":{\"type\":\"integer\"},\"workspaceId\":{\"type\":\"string\"}},\"required\":[\"workspaceId\"],\"type\":\"object\"},\"name\":\"eden_list_workspace_items\",\"outputSchema\":{\"properties\":{\"items\":{\"type\":\"array\"}},\"type\":\"object\"}}",
+  "expected_sha256": "2e1f105357882546d45bcebcce75fadda0f4e4e407aa23a9d5d579ebd66592d3",
+  "descriptor_parts": {
+    "name": "eden_list_workspace_items",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "workspaceId": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "workspaceId"
+      ]
+    },
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array"
+        }
+      }
+    },
+    "upstream_annotations": null
+  }
+}

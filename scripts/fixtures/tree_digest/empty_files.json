@@ -1,0 +1,19 @@
+{
+  "name": "empty_files",
+  "description": "Empty files are members with content_length 0; directories are never members.",
+  "files": [
+    {
+      "path": "empty.txt",
+      "content_b64": ""
+    },
+    {
+      "path": "also/empty.bin",
+      "content_b64": ""
+    },
+    {
+      "path": "one.txt",
+      "content_b64": "eA=="
+    }
+  ],
+  "expected_sha256": "7eb82e69c18b3577046108c0b619e9b9f5096c50512f53e509f8a0879b72899a"
+}

@@ -1,0 +1,24 @@
+{
+  "name": "path_ordering",
+  "description": "Bytewise path order, not path-component order: '.' (0x2e) < '/' (0x2f) < 'b' (0x62), so 'a' < 'a.b' < 'a/b' < 'ab'. The file 'a' and the directory 'a/' cannot coexist on a filesystem \u2014 this fixture pins the digest domain, where the length prefixes keep the two trees distinct.",
+  "files": [
+    {
+      "path": "a",
+      "content_b64": ""
+    },
+    {
+      "path": "a.b",
+      "content_b64": "eA=="
+    },
+    {
+      "path": "a/b",
+      "content_b64": "eXk="
+    },
+    {
+      "path": "ab",
+      "content_b64": "enp6"
+    }
+  ],
+  "expected_sha256": "53e2280a85a4e58b7182a48a0fe7fa12217b4ac6c9ae512496efdfef5cae6940",
+  "filesystem_realizable": false
+}

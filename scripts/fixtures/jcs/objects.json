@@ -1,0 +1,7 @@
+{
+  "name": "objects",
+  "description": "Object key order is normalized at every depth (uppercase and _ included).",
+  "input_json": "{\"b\":{\"d\":1,\"c\":{\"f\":[],\"e\":{}}},\"a\":true,\"A\":false,\"_\":null}",
+  "expected": "{\"A\":false,\"_\":null,\"a\":true,\"b\":{\"c\":{\"e\":{},\"f\":[]},\"d\":1}}",
+  "expected_sha256": "056ede9d5ca51633c4a3a1ed3e1cba7e30d3e77798169d2148b00702c215ca02"
+}

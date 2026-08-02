@@ -1,0 +1,7 @@
+{
+  "name": "unicode",
+  "description": "Keys sort by UTF-16 code unit, so the astral key (surrogate pair D83D DE00) sorts BEFORE U+E000; non-ASCII is emitted as literal UTF-8, never escaped.",
+  "input_json": "{\"\\ue000\":\"private-use\",\"\\ud83d\\ude00\":\"astral\",\"\\u00e9\":\"latin-1\",\"\\u043a\\u043b\\u044e\\u0447\":\"cyrillic\",\"mixed\":\"a\\ud83d\\ude00b\"}",
+  "expected": "{\"mixed\":\"a\ud83d\ude00b\",\"\u00e9\":\"latin-1\",\"\u043a\u043b\u044e\u0447\":\"cyrillic\",\"\ud83d\ude00\":\"astral\",\"\ue000\":\"private-use\"}",
+  "expected_sha256": "b5328ac1e69438b25da5b84632d8a9f837836c5979d05f2292287264fea8df00"
+}

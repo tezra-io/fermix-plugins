@@ -1,0 +1,7 @@
+{
+  "name": "numbers",
+  "description": "Integers vs floats, 1e21, -0, and the ECMAScript exponent thresholds.",
+  "input_json": "{\"int\":1,\"float\":1.0,\"big\":1e21,\"negzero_int\":-0,\"negzero_float\":-0.0,\"neg\":-1.5,\"small\":1e-7,\"tiny\":1e-6,\"sixteen\":1e16,\"third\":0.1}",
+  "expected": "{\"big\":1e+21,\"float\":1,\"int\":1,\"neg\":-1.5,\"negzero_float\":0,\"negzero_int\":0,\"sixteen\":10000000000000000,\"small\":1e-7,\"third\":0.1,\"tiny\":0.000001}",
+  "expected_sha256": "9636481b917b5425956cf2855d851dd21ca123cacd21a2f1ad98a32f4396fe92"
+}

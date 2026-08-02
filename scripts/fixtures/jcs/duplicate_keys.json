@@ -1,0 +1,6 @@
+{
+  "name": "duplicate_keys",
+  "description": "A duplicate object key is refused BEFORE canonicalization; last-wins parsing would let two different manifests canonicalize to the same bytes.",
+  "input_json": "{\"a\":1,\"a\":2}",
+  "error": "duplicate object key"
+}

@@ -1,0 +1,6 @@
+{
+  "name": "duplicate_keys_nested",
+  "description": "The refusal applies at every depth, not only at the root.",
+  "input_json": "{\"outer\":{\"a\":1,\"b\":2,\"a\":3}}",
+  "error": "duplicate object key"
+}

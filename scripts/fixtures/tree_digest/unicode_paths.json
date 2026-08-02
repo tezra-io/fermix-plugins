@@ -1,0 +1,19 @@
+{
+  "name": "unicode_paths",
+  "description": "Unicode paths hash as NFC-normalized UTF-8.",
+  "files": [
+    {
+      "path": "assets/caf\u00e9.svg",
+      "content_b64": "PHN2Zy8+"
+    },
+    {
+      "path": "skills/na\u00efve/SKILL.md",
+      "content_b64": "IyBza2lsbAo="
+    },
+    {
+      "path": "\ud83d\ude00.md",
+      "content_b64": "ZW1vamk="
+    }
+  ],
+  "expected_sha256": "24ddcec279e5fa73105e5d03021c828e4d7cbf4e22aa91dda28b2e450da79471"
+}
