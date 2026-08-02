@@ -1,0 +1,7 @@
+{
+  "name": "arrays",
+  "description": "Array order is preserved; objects nested inside arrays are still normalized.",
+  "input_json": "{\"z\":[3,1,2,{\"b\":1,\"a\":2}],\"a\":[\"x\",[],{}]}",
+  "expected": "{\"a\":[\"x\",[],{}],\"z\":[3,1,2,{\"a\":2,\"b\":1}]}",
+  "expected_sha256": "96d978cac78382f6643a538738d291a8a0fd68ce081aa01a9582c0e1cdc5b6f9"
+}

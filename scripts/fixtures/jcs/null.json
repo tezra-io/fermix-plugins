@@ -1,0 +1,7 @@
+{
+  "name": "null",
+  "description": "Explicit null survives everywhere: member value, array element, nested member.",
+  "input_json": "{\"a\":null,\"b\":[null,null],\"c\":{\"d\":null}}",
+  "expected": "{\"a\":null,\"b\":[null,null],\"c\":{\"d\":null}}",
+  "expected_sha256": "2713b3b615d7e09eccadee72c891418568839c137830c8975435b94da7375bf1"
+}
