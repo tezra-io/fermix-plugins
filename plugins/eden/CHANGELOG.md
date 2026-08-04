@@ -32,9 +32,12 @@
   the save tools. No crawling, mirroring, bulk export, or sync.
 - `eden-plugin` skill: the canonical-item/board/connection model (boards are
   curated views, not duplicate storage), literal-before-semantic search with
-  the one-credit disclosure, search-before-read and read-before-append,
-  sticky-vs-note capture, retrieved content treated as untrusted data,
-  structured-status recovery, no auto-retry of an ambiguous write, and no
-  browser/shell/REST/Obsidian fallback.
+  cost disclosure before any credit-metered call, search-before-read and
+  read-before-append, sticky-vs-note capture, retrieved content treated as
+  untrusted data, structured-status recovery, no auto-retry of an ambiguous
+  write, and no browser/shell/REST/Obsidian fallback.
 - Unofficial integration; not endorsed by or affiliated with Eden. Eden MCP
-  requires a paid Eden plan and semantic search spends an EdenAI credit.
+  requires a paid Eden plan. Three tools are metered against the account's
+  EdenAI credit balance — `eden_find_workspace_items`, `eden_read_board`, and
+  `eden_search_highlights` — and refuse with `out_of_credits` once it is spent;
+  literal search, listing, and note reads keep working.

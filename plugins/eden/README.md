@@ -19,10 +19,15 @@ interoperates with.
   is no offline mode and no self-hosted option.
 - **Eden MCP requires a paid Eden plan** (currently Personal Plus and above).
   See [pricing](https://eden.so/pricing/).
-- **Some operations spend EdenAI credits.** Semantic workspace search
-  (`eden_find_workspace_items`) currently costs **one credit per call** — see
-  [how credits work](https://eden.so/help/account/how-credits-work/). Literal
-  search does not.
+- **Some operations are metered against your EdenAI credit balance.** Observed
+  against a live account: `eden_find_workspace_items` (semantic search),
+  `eden_read_board`, and `eden_search_highlights` all refuse with
+  `out_of_credits` once the balance is exhausted, while literal search
+  (`eden_search_workspace_items`), listing, and note reads keep working. See
+  [how credits work](https://eden.so/help/account/how-credits-work/). The plugin
+  skill tells the model to prefer the free tools and to disclose the cost before
+  using a metered one, but it cannot refund a balance — an agent left to browse
+  boards will spend credits.
 - **Eden AI features may route relevant content to third-party model
   providers** under Eden's own terms. Read the
   [privacy policy](https://eden.so/privacy/) and
@@ -83,15 +88,15 @@ Retrieval (`retrieval` and `capture`):
 |---|---|
 | `eden_list_workspace_items` | Browse saved items, bounded pagination |
 | `eden_search_workspace_items` | Literal title/URL/text search |
-| `eden_find_workspace_items` | Semantic search — **one EdenAI credit per call** |
-| `eden_read_board` | A board and the items placed on it |
+| `eden_find_workspace_items` | Semantic search — **credit-metered** |
+| `eden_read_board` | A board and the items placed on it — **credit-metered** |
 | `eden_read_card` | A saved card |
 | `eden_read_media_card` | Metadata for saved media (generates nothing) |
 | `eden_read_social_post` | A post already saved to the workspace |
 | `eden_get_note_markdown` | A note as Markdown |
 | `eden_get_item_connections` | An item's explicit links |
 | `eden_get_suggested_connections` | Eden's suggested links (read-only) |
-| `eden_search_highlights` | Search highlights |
+| `eden_search_highlights` | Search highlights — **credit-metered** |
 | `eden_list_highlights` | List highlights, bounded pagination |
 
 Capture (`capture` only, all additive):
