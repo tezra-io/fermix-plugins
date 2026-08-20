@@ -90,22 +90,18 @@ Retrieval (`retrieval` and `capture`):
 | `eden_search_workspace_items` | Literal title/URL/text search |
 | `eden_find_workspace_items` | Semantic search — **credit-metered** |
 | `eden_read_board` | A board and the items placed on it — **credit-metered** |
-| `eden_read_card` | A saved card |
 | `eden_read_media_card` | Metadata for saved media (generates nothing) |
-| `eden_read_social_post` | A post already saved to the workspace |
+| `eden_read_social_post` | One social post, by Eden id or by `url` (an uncached `url` costs vendor quota) |
 | `eden_get_note_markdown` | A note as Markdown |
-| `eden_get_item_connections` | An item's explicit links |
-| `eden_get_suggested_connections` | Eden's suggested links (read-only) |
-| `eden_search_highlights` | Search highlights — **credit-metered** |
-| `eden_list_highlights` | List highlights, bounded pagination |
+| `eden_get_connections` | An item's connections — `include: ["existing"]` or `["suggested"]`, both when omitted |
+| `eden_search_highlights` | Highlights — pass `q` to search, omit `q` to list — **credit-metered** |
 
 Capture (`capture` only, all additive):
 
 | Tool | What it does |
 |---|---|
-| `eden_create_note` | Create a long-form Markdown note |
+| `eden_create_note` | Create a workspace item — `presentation: "document"` (default) or `"card"` |
 | `eden_append_to_note` | Append Markdown to an existing note |
-| `eden_create_sticky_note` | Capture a short thought |
 | `eden_create_board` | Create a board |
 | `eden_save_links_to_board` | Save operator-supplied public links to a board |
 | `eden_save_posts_to_board` | Save operator-supplied social posts to a board |
