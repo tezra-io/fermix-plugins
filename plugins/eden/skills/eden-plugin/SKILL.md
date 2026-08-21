@@ -23,17 +23,15 @@ Retrieval — the default `retrieval` profile, all read-only:
 - `eden_find_workspace_items` — semantic search. **Credit-metered**; say so before using it when a literal search would plausibly do.
 - `eden_list_workspace_items` — browse saved items; always pass a bounded limit.
 - `eden_get_note_markdown` — one note as Markdown.
-- `eden_read_card` / `eden_read_media_card` — a saved card / metadata for saved media (it does not generate media).
-- `eden_read_social_post` — a post **already saved** to the workspace; it does not search Eden's global social corpus.
+- `eden_read_media_card` — metadata for saved media (it does not generate media).
+- `eden_read_social_post` — one social post, by its Eden id (`contentId` + `platform` from a prior result) or by `url`. Only pass a `url` the operator gave you or that came from an Eden result — never one you composed. An uncached `url` makes Eden fetch the page live and bills the operator's vendor quota, so say so before you do it.
 - `eden_read_board` — a board and the items placed on it. **Credit-metered** — read a board because the answer needs it, not to browse.
-- `eden_get_item_connections` — an item's explicit links.
-- `eden_get_suggested_connections` — Eden's suggestions only; reading them changes nothing.
-- `eden_search_highlights` (**credit-metered**) / `eden_list_highlights` — highlights, bounded. Prefer listing when a bounded browse answers the question.
+- `eden_get_connections` — an item's connections. `include: ["existing"]` for explicit links, `["suggested"]` for Eden's suggestions; omitting `include` returns both, which is more result than most questions need. Reading suggestions changes nothing.
+- `eden_search_highlights` (**credit-metered**) — highlights, bounded. Pass `q` to search; **omit `q` entirely** to list (an empty `q` is refused, not treated as a list). Bound every call with `limit`.
 
 Capture — the `capture` profile only, an explicit opt-in that needs an Eden read/write token:
 
-- `eden_create_sticky_note` — a short thought, a quick capture.
-- `eden_create_note` — durable long-form Markdown.
+- `eden_create_note` — a workspace item. `presentation: "document"` (the default) for durable long-form Markdown; `presentation: "card"` for a short thought or quick capture. Always pass `content`.
 - `eden_append_to_note` — add to an existing note; read it first.
 - `eden_create_board` — only when the operator asks for organization.
 - `eden_save_links_to_board` / `eden_save_posts_to_board` — save links/posts the operator supplied.
