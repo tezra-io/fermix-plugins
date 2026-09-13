@@ -1775,8 +1775,14 @@ class ReleaseWorkflowMeta(Assertions):
             exec(compile(meta_script(), "release-plugin.yml:meta", "exec"), {"__name__": "__main__"})
             return dict(line.split("=", 1) for line in output.read_text().splitlines() if line)
 
+    @staticmethod
+    def tesla_tag():
+        """The tag the release job would see for the manifest as committed."""
+        version = json.loads((REPO_ROOT / "plugins/tesla/plugin.json").read_text())["version"]
+        return f"tesla/v{version}"
+
     def test_a_go_descriptor_resolves_the_go_lane(self):
-        out = self.run_meta(EVENT="push", REF_NAME="tesla/v1.0.0")
+        out = self.run_meta(EVENT="push", REF_NAME=self.tesla_tag())
         self.assertEqual(out["native"], "true")
         self.assertEqual(out["toolchain"], "go")
         self.assertEqual(out["binary"], "fermix-tesla")
@@ -1787,7 +1793,7 @@ class ReleaseWorkflowMeta(Assertions):
         self.assertEqual(out["crate_path"], "")
 
     def test_the_go_matrix_maps_every_target_to_goos_and_goarch(self):
-        out = self.run_meta(EVENT="push", REF_NAME="tesla/v1.0.0")
+        out = self.run_meta(EVENT="push", REF_NAME=self.tesla_tag())
         include = json.loads(out["matrix"])["include"]
         by_target = {entry["target"]: entry for entry in include}
         self.assertEqual(
