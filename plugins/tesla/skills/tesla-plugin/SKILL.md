@@ -14,6 +14,7 @@ Tesla addresses cars by **VIN**, not by name.
 - `tesla_list_vehicles` → each car's `vin`, `display_name`, and `state`. Call it **once** per session and reuse the VIN for every other tool.
 - `state` is the cloud's view of the car: `online` answers live requests, `asleep` answers only after a wake, `offline` has no connection at all.
 - One car on the account: use it. Several: name them and ask which one.
+- The VIN is a tool argument, not conversation. Never print it, or any part of it, in a reply; call the car by its `display_name` or "your Tesla". Give the VIN only if the user asks for it outright.
 
 ## Pick the tool
 

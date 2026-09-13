@@ -216,6 +216,25 @@ signed plugin artifact — there is nothing to install separately and nothing is
 downloaded at run time. Fermix hands it the account's access token and the path
 from `SIGNING_KEY_PATH`; it holds no credentials of its own.
 
+## What you can reuse from another install, and what you cannot
+
+The plugin is open source and every operator brings their own Tesla developer
+application, so it helps to know which parts of a working setup carry over:
+
+- **The redirect page carries over.** `https://fermix.ai/api/integrations/tesla/callback`
+  is a static page that forwards the sign-in to the daemon on your own
+  computer and keeps nothing, so any Fermix operator can register it on their
+  own application. (Or host the same page yourself.)
+- **Nothing key-related carries over.** Tesla binds the public key to the
+  domain your application registered as its allowed origin, and binds the
+  partner registration to your client ID. The pairing link is
+  `https://tesla.com/_ak/<your-domain>`, and a car accepts only commands
+  signed with the private half of the key it paired. So you need your own
+  domain (a static host that can serve one file under `/.well-known/` is
+  enough), your own key pair, your own registration in each region, and your
+  own pairing on each car. Never use, publish or accept anyone else's private
+  key: whoever holds it can command every car that paired it.
+
 ## Regions
 
 | Region | Fleet API host |
