@@ -1,6 +1,6 @@
 ---
 name: tesla-plugin
-description: Use for ANY question about the user's Tesla — charge level, range, climate, location, alerts, service, software, nearby chargers, charging history, warranty. Uses the Fermix Tesla plugin, never the browser.
+description: Use for ANY question about the user's car, vehicle, or Tesla — charge level, range, climate, location, alerts, service, software, nearby chargers, charging history, warranty. Uses the Fermix Tesla plugin, never the browser.
 ---
 
 # Tesla
