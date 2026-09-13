@@ -77,6 +77,12 @@ Every command moves a real car that someone may be standing next to.
 
 PIN to Drive, valet mode, speed limits, and parental controls are not available through this plugin at all. Say so; do not approximate them with another command.
 
+## When a command says the car is asleep
+
+- That refusal comes from the car's command channel and outranks the cloud list: `tesla_list_vehicles` can still say `online` for minutes after the car has dozed off.
+- Do not re-check the list. Call `tesla_wake_vehicle` (harmless if the car is already awake), then read `tesla_get_vehicle_status` until it says `online`, then send the same command once more, with the user's original yes still standing. Ask again only if the wake is billed and the user has not agreed to waking.
+- If the second attempt is refused the same way, stop and say so; do not loop.
+
 ## Cost
 
 Every call is metered on the owner's Tesla developer account, and live reads of the car are the ones worth rationing.

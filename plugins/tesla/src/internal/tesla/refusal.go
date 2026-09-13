@@ -13,7 +13,7 @@ const (
 	SentenceKeyPermissionsFmt = "The Tesla signing key at %s is readable by other users. Run chmod 600 %s and try again."
 	SentenceKeyUnreadableFmt  = "The Tesla signing key at %s could not be read. Check the path and its permissions, then try again."
 	SentenceKeyInvalidFmt     = "The Tesla signing key at %s is not a prime256v1 private key. Replace it with the application's P-256 key in PEM form."
-	SentenceAsleep            = "The car is asleep. Wake it with tesla_wake_vehicle, then send the command again."
+	SentenceAsleep            = "The car did not answer; it is most likely asleep even if the vehicle list says online. Wake it with tesla_wake_vehicle (harmless when it is already awake), wait until its status reads online, then send the command once more."
 	SentenceUnpaired          = "This car has not paired the application's key. Open https://tesla.com/_ak/fermix.ai in the Tesla app on the owner's phone, approve it, then try again."
 	SentenceUnconfirmed       = "The command was sent but the car did not confirm. Check the car's state before sending it again."
 	SentenceNoResponse        = "The car did not respond in time. Try again in a moment."
