@@ -4,13 +4,13 @@
   "display_name": "Tesla",
   "description": "Check your Tesla's charge, climate, location, alerts and history, and control charging, climate and locks.",
   "category": "productivity",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "default_enabled": false,
   "interface": {
     "short_description": "See your Tesla's state, and control it when you allow commands",
     "developer_name": "Fermix",
     "brand_color": "#E82127",
-    "logo": "assets/logo.svg",
+    "logo": "assets/logo.png",
     "privacy_policy_url": "https://www.tesla.com/legal/privacy",
     "terms_of_service_url": "https://www.tesla.com/legal"
   },
@@ -35,13 +35,13 @@
   "config": [
     {
       "key": "ALLOW_COMMANDS",
-      "prompt": "Allow vehicle commands (each command is billed)",
+      "prompt": "Allow vehicle commands",
       "required": false,
       "kind": "boolean"
     },
     {
       "key": "SIGNING_KEY_PATH",
-      "prompt": "Path to the app's private key PEM used to sign vehicle commands",
+      "prompt": "Signing key path",
       "required": false,
       "kind": "text"
     }

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.1
+
+- The mark is Tesla's own: `assets/logo.png` is the 196 pixel favicon
+  tesla.com serves for itself
+  (`https://www.tesla.com/themes/custom/tesla_frontend/assets/favicons/favicon-196x196.png`,
+  retrieved 2026-09-13, sha256
+  `c82462c37d740922a2e4dd0f5cc8f4da3d1e646453cfb3c525fae4f34864a6fc`), byte
+  for byte. The redrawn SVG it replaces was nobody's official artwork.
+- Shorter setting labels: `ALLOW_COMMANDS` reads "Allow vehicle commands" and
+  `SIGNING_KEY_PATH` reads "Signing key path". A label is the name of the
+  control; what each one means stays in this README.
+
 ## 1.0.0
 
 - Initial release: declarative http-rail reads plus a vendored local helper for
