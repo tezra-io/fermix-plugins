@@ -25,6 +25,7 @@ PLUGIN_API_REMOTE = 3
 NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 TOOL_NAME_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 CONFIG_KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
+REGION_LABEL_RE = re.compile(r"^[a-z]{2,8}$")
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 PROFILE_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 SHA256_HEX_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -493,16 +494,27 @@ def _validate_tools(manifest, plugin_dir):
     errors = []
     name = manifest.get("name") or ""
     auth = manifest.get("auth") or {}
+    config_keys = _declared_config_keys(manifest)
     seen = set()
     for tool in tools:
         if not isinstance(tool, dict):
             errors.append("each tool must be an object")
             continue
-        errors += _validate_tool(tool, name, auth, seen)
+        errors += _validate_tool(tool, name, auth, seen, config_keys)
     return errors
 
 
-def _validate_tool(tool, plugin_name, auth, seen):
+def _declared_config_keys(manifest):
+    """The config keys a tool may gate on. A malformed config block declares
+    none — `_validate_config` reports the block itself, and every gate pointing
+    into it is reported here rather than silently treated as satisfiable."""
+    config = manifest.get("config")
+    if not isinstance(config, list):
+        return set()
+    return {e["key"] for e in config if isinstance(e, dict) and isinstance(e.get("key"), str)}
+
+
+def _validate_tool(tool, plugin_name, auth, seen, config_keys):
     errors = []
     tool_name = tool.get("name", "")
     label = tool_name or "<unnamed tool>"
@@ -525,6 +537,7 @@ def _validate_tool(tool, plugin_name, auth, seen):
         errors.append(f"{label}: rail must be one of {sorted(RAILS)}")
     if rail == "http":
         errors += _validate_http_tool(tool, label)
+    errors += _validate_requires_setting(tool.get("requires_setting"), label, config_keys)
     if auth.get("type") == "oauth2":
         declared = auth.get("scopes") or []
         scopes = tool.get("requires_scopes")
@@ -539,6 +552,19 @@ def _validate_tool(tool, plugin_name, auth, seen):
     return errors
 
 
+def _validate_requires_setting(setting, label, config_keys):
+    """A tool may gate on exactly ONE operator setting, named by a config key
+    the same manifest declares. A misspelled key would leave the tool gated on
+    a setting nobody can ever set, with nothing at install time to say so."""
+    if setting is None:
+        return []
+    if not isinstance(setting, str) or not setting.strip():
+        return [f"{label}: requires_setting must be a single config key string"]
+    if setting not in config_keys:
+        return [f"{label}: requires_setting names an undeclared config key {setting}"]
+    return []
+
+
 def _validate_http_tool(tool, label):
     errors = []
     parameters = tool.get("parameters")
@@ -549,19 +575,56 @@ def _validate_http_tool(tool, label):
         return errors + [f"{label}: http tools need a request template"]
     if request.get("method") not in HTTP_METHODS:
         errors.append(f"{label}: request.method must be one of {sorted(HTTP_METHODS)}")
-    errors += _validate_request_url(request.get("url"), label)
+    errors += _validate_request_target(request, label)
     return errors
 
 
-def _validate_request_url(url, label):
-    """SSRF guard, publish side: https only; no placeholder in scheme/host."""
+def _validate_request_target(request, label):
+    """A request names its host exactly once (M40 §3.2).
+
+    `url` is one static template. `regional_urls` is a finite signed map of
+    region to a COMPLETE template; core picks one from the verified auth
+    profile, never from a model argument or an upstream redirect. Declaring
+    both would leave two hosts and no record of which one ran, so the pair is
+    refused on presence — a null beside a real value is still both keys.
+    """
+    if "url" in request and "regional_urls" in request:
+        return [f"{label}: request.url and request.regional_urls are mutually exclusive"]
+    if "regional_urls" in request:
+        return _validate_regional_urls(request["regional_urls"], label)
+    url = request.get("url")
     if not isinstance(url, str) or not url:
-        return [f"{label}: request.url is required"]
+        return [f"{label}: request.url or request.regional_urls is required"]
+    return _validate_request_url(url, label)
+
+
+def _validate_regional_urls(regional, label):
+    """Every region maps to a complete https template under the same SSRF rules
+    as a single `url`; the label itself is a closed lowercase token, never a
+    path segment or a host fragment."""
+    if not isinstance(regional, dict) or not regional:
+        return [f"{label}: request.regional_urls must be a non-empty object of region → url"]
+    errors = []
+    for region, url in regional.items():
+        if not isinstance(region, str) or not REGION_LABEL_RE.match(region):
+            errors.append(f"{label}: request.regional_urls region {region!r} must match ^[a-z]{{2,8}}$")
+        errors += _validate_request_url(url, label, f"request.regional_urls.{region}")
+    return errors
+
+
+def _validate_request_url(url, label, field="request.url"):
+    """SSRF guard, publish side: https only; no placeholder in scheme/host.
+
+    The caller owns the "a target is required" message, because which key is
+    missing depends on whether the tool is regional.
+    """
+    if not isinstance(url, str) or not url:
+        return [f"{label}: {field} must be a non-empty url string"]
     if not url.startswith("https://"):
-        return [f"{label}: request.url must be https://"]
+        return [f"{label}: {field} must be https://"]
     host = url[len("https://"):].split("/", 1)[0]
     if "{" in host or not host:
-        return [f"{label}: request.url host must be a static literal (no placeholders)"]
+        return [f"{label}: {field} host must be a static literal (no placeholders)"]
     return []
 
 

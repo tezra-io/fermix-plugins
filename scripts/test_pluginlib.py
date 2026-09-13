@@ -2,10 +2,11 @@
 """Unit tests for the publish-side validation boundary in pluginlib.
 
 Focus: a manifest must not be able to point skills/interface assets outside the
-plugin directory, runtime.command must be a bare executable name, and the
-plugin-api-3 remote-MCP grammar (M27 §7.2/§7.5/§7.6/§9.3) must refuse every
-shape core refuses at install. These mirror the core decoder's install-time
-guards; keep them in sync.
+plugin directory, runtime.command must be a bare executable name, an http tool
+must name its host exactly once and gate only on a declared config key (M40
+§3.2/§7.4), and the plugin-api-3 remote-MCP grammar (M27 §7.2/§7.5/§7.6/§9.3)
+must refuse every shape core refuses at install. These mirror the core
+decoder's install-time guards; keep them in sync.
 
 Run: python3 scripts/test_pluginlib.py
 """
@@ -185,6 +186,21 @@ def remote_manifest(**overrides):
     return manifest
 
 
+def http_tool(**overrides):
+    """One plugin-api-2 http-rail tool; `request` carries a single static url."""
+    tool = {
+        "name": f"{PLUGIN}_search",
+        "description": "Search Acme.",
+        "policy_class": "external_api",
+        "read_only": True,
+        "rail": "http",
+        "parameters": {"type": "object", "properties": {"q": {"type": "string"}}},
+        "request": {"method": "GET", "url": "https://api.acme.example/search"},
+    }
+    tool.update(overrides)
+    return tool
+
+
 def api2_manifest(**overrides):
     manifest = {
         "schema_version": 2,
@@ -195,17 +211,7 @@ def api2_manifest(**overrides):
         "version": "1.0.0",
         "min_core_version": "0.5.0",
         "auth": {"type": "api_key", "key_name": "ACME_API_KEY", "header": "Authorization", "prompt": "Paste a key"},
-        "tools": [
-            {
-                "name": f"{PLUGIN}_search",
-                "description": "Search Acme.",
-                "policy_class": "external_api",
-                "read_only": True,
-                "rail": "http",
-                "parameters": {"type": "object", "properties": {"q": {"type": "string"}}},
-                "request": {"method": "GET", "url": "https://api.acme.example/search"},
-            }
-        ],
+        "tools": [http_tool()],
         "plugin_api": 2,
     }
     manifest.update(overrides)
@@ -321,6 +327,104 @@ class SchemaVersionMajor(Assertions):
 
     def test_schema_version_2_is_accepted(self):
         self.assert_no_error(self._errors(2), "schema_version")
+
+
+# --- 1b. request target: one url, or a signed regional map (M40 §3.2) --------
+
+
+class RequestTarget(Assertions):
+    """A tool names its host exactly once: `url`, or a `regional_urls` map core
+    picks from the verified auth profile. Both, or neither, is an error."""
+
+    def _errors(self, request):
+        manifest = api2_manifest(tools=[http_tool(request=request)])
+        return pluginlib._validate_tools(manifest, Path(PLUGIN))
+
+    def test_single_url_is_still_accepted(self):
+        self.assert_clean(self._errors({"method": "GET", "url": "https://api.acme.example/search"}))
+
+    def test_regional_map_is_accepted(self):
+        errors = self._errors(
+            {
+                "method": "GET",
+                "regional_urls": {
+                    "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/vehicles/{vin}",
+                    "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/vehicles/{vin}",
+                },
+            }
+        )
+        self.assert_clean(errors)
+
+    def test_url_and_regional_urls_are_mutually_exclusive(self):
+        errors = self._errors(
+            {
+                "method": "GET",
+                "url": "https://api.acme.example/search",
+                "regional_urls": {"na": "https://na.acme.example/search"},
+            }
+        )
+        self.assert_error(errors, "request.url and request.regional_urls are mutually exclusive")
+
+    def test_neither_target_is_refused(self):
+        self.assert_error(self._errors({"method": "GET"}), "request.url or request.regional_urls is required")
+
+    def test_region_label_grammar(self):
+        for label in ("NA", "n", "toolongregion", "na-1", "na_1", "", "na1"):
+            errors = self._errors({"method": "GET", "regional_urls": {label: "https://na.acme.example/v1"}})
+            self.assert_error(errors, "must match ^[a-z]{2,8}$")
+
+    def test_every_region_value_must_be_https(self):
+        errors = self._errors(
+            {
+                "method": "GET",
+                "regional_urls": {
+                    "na": "https://na.acme.example/v1",
+                    "eu": "http://eu.acme.example/v1",
+                },
+            }
+        )
+        self.assert_error(errors, "request.regional_urls.eu must be https://")
+        self.assert_no_error(errors, "regional_urls.na")
+
+    def test_every_region_host_must_be_a_static_literal(self):
+        errors = self._errors({"method": "GET", "regional_urls": {"na": "https://{region}.acme.example/v1"}})
+        self.assert_error(errors, "request.regional_urls.na host must be a static literal")
+
+    def test_map_must_be_a_non_empty_object(self):
+        for value in ({}, [], "na", None, ["https://na.acme.example/v1"]):
+            errors = self._errors({"method": "GET", "regional_urls": value})
+            self.assert_error(errors, "request.regional_urls must be a non-empty object")
+
+
+# --- 1c. per-tool requires_setting: gate on a declared config key ------------
+
+
+class RequiresSetting(Assertions):
+    """A tool may gate on one operator setting, and only on one the manifest
+    actually declares — a typo would leave the gate permanently unsatisfiable."""
+
+    def _errors(self, setting, config=({"key": "ALLOW_WAKE", "prompt": "Allow waking", "required": False},)):
+        manifest = api2_manifest(tools=[http_tool(requires_setting=setting)], config=list(config))
+        return pluginlib._validate_tools(manifest, Path(PLUGIN))
+
+    def test_declared_config_key_is_accepted(self):
+        self.assert_clean(self._errors("ALLOW_WAKE"))
+
+    def test_absent_requires_setting_is_accepted(self):
+        manifest = api2_manifest()
+        self.assert_clean(pluginlib._validate_tools(manifest, Path(PLUGIN)))
+
+    def test_undeclared_config_key_is_refused(self):
+        errors = self._errors("ALLOW_SPEED")
+        self.assert_error(errors, "requires_setting names an undeclared config key ALLOW_SPEED")
+
+    def test_a_manifest_without_config_declares_no_keys(self):
+        errors = self._errors("ALLOW_WAKE", config=())
+        self.assert_error(errors, "requires_setting names an undeclared config key ALLOW_WAKE")
+
+    def test_at_most_one_setting_per_tool(self):
+        for value in (["ALLOW_WAKE"], ["ALLOW_WAKE", "ALLOW_WAKE"], "", 7, True):
+            self.assert_error(self._errors(value), "requires_setting must be a single config key string")
 
 
 # --- 2/3. plugin-api gating: api 2 must reject every api-3-only field ---------
