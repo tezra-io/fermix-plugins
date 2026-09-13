@@ -1799,7 +1799,7 @@ class ReleaseWorkflowMeta(Assertions):
                 "linux-aarch64": ("linux", "arm64"),
             },
         )
-        self.assertEqual(by_target["macos-x86_64"]["runner"], "macos-13")
+        self.assertEqual(by_target["macos-x86_64"]["runner"], "macos-14")
         self.assertEqual(by_target["linux-aarch64"]["runner"], "ubuntu-24.04-arm")
 
     def test_a_descriptor_without_a_toolchain_key_is_still_rust(self):
