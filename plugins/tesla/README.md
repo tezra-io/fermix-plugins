@@ -75,17 +75,16 @@ region.
    Use the `eu` base URL for both the `audience` and the two calls if you
    register Europe. Skipping this step is what a `412` means later.
 
-5. Put the application's **Client ID** and **Client Secret** into Fermix (the
-   secret goes to your OS keychain), and set your region:
-
-   ```toml
-   [fermix_core.oauth.tesla]
-   region = "na"   # or "eu"
-   ```
-
-   `na` is the default. The region picks both the token `audience` and the
-   Fleet API host every tool calls; an account registered in the other region
-   answers `421`.
+5. Put the application's **Client ID** and **Client Secret** into Fermix's
+   sign-in client for Tesla (the secret goes to your OS keychain) and choose
+   the **region your Tesla account belongs to**. There is no default. Tesla
+   assigns the region by the account's home country, not by where you live:
+   North America and Asia-Pacific, or Europe, Middle East and Africa. The
+   region picks both the token `audience` and the Fleet API host every tool
+   calls. After each sign-in Fermix asks Tesla which region the account is in
+   and flags the row if the two disagree, so a wrong choice never surfaces as
+   a `421` from the first question. In `config.toml` the same choice is
+   `region = "na"` or `"eu"` under `[fermix_core.oauth.tesla]`.
 
 6. Connect on the Fermix setup page. Tesla's consent screen lists the scopes
    below. Refresh tokens last about three months and are rotated on use;
