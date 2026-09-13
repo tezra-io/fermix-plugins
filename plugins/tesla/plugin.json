@@ -49,7 +49,7 @@
   "tools": [
     {
       "name": "tesla_list_vehicles",
-      "description": "Vehicles on the account with cloud state. Call first to get VINs.",
+      "description": "List cars: vin, display_name, cloud state. Cloud read. Args: none.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -86,7 +86,7 @@
     },
     {
       "name": "tesla_get_vehicle_status",
-      "description": "Cloud connection state (online, asleep, offline) without waking the car.",
+      "description": "Cloud state of one car: online, asleep, offline. Never wakes it. Args: vin.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -132,7 +132,7 @@
     },
     {
       "name": "tesla_get_vehicle_data",
-      "description": "One live data section from the car. Billed; fails 408 when asleep, never wakes.",
+      "description": "One live section from the car (billed; 408 when asleep). Args: vin, section.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -199,7 +199,7 @@
     },
     {
       "name": "tesla_get_vehicle_location",
-      "description": "Live GPS position. Shows a sharing icon in the car; billed.",
+      "description": "Live GPS position (billed; shows a sharing icon in the car). Args: vin.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -251,7 +251,7 @@
     },
     {
       "name": "tesla_get_fleet_status",
-      "description": "Firmware, command protocol requirement, virtual key pairing, telemetry version.",
+      "description": "Firmware, command-protocol need, key pairing, telemetry version. Args: vin.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -298,7 +298,7 @@
     },
     {
       "name": "tesla_get_mobile_access",
-      "description": "Whether the car's Allow Mobile Access setting is on.",
+      "description": "Whether the car's Allow Mobile Access setting is on. Args: vin.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -339,7 +339,7 @@
     },
     {
       "name": "tesla_get_vehicle_alerts",
-      "description": "Recent alerts the car raised, with times and any owner-facing text.",
+      "description": "Recent alerts with times and any owner text. Cloud read. Args: vin.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -382,7 +382,7 @@
     },
     {
       "name": "tesla_get_service_status",
-      "description": "Service status for the car: state, estimated completion, visit number.",
+      "description": "Service state, estimated completion, visit number. Cloud read. Args: vin.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -425,7 +425,7 @@
     },
     {
       "name": "tesla_get_release_notes",
-      "description": "Software release notes for the car's installed or staged update.",
+      "description": "Software release notes, installed or staged. Args: vin, staged (bool).",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -470,7 +470,7 @@
     },
     {
       "name": "tesla_get_nearby_charging_sites",
-      "description": "Chargers near the car's current position. Billed; the car must be online.",
+      "description": "Chargers near the car (billed; car must be online). Args: vin, count, radius.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -530,7 +530,7 @@
     },
     {
       "name": "tesla_list_charging_history",
-      "description": "Supercharging and other Tesla-billed sessions with fees. Not home charging.",
+      "description": "Tesla-billed charging sessions with fees. Args: vin, start_time, end_time, page_no, page_size.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -607,7 +607,7 @@
     },
     {
       "name": "tesla_get_vehicle_options",
-      "description": "Trim, paint, wheels, and packages as Tesla option codes.",
+      "description": "Trim, paint, wheels, packages as option codes. Cloud read. Args: vin.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -653,7 +653,7 @@
     },
     {
       "name": "tesla_get_warranty",
-      "description": "Warranty cover for the car: active, upcoming, and expired terms.",
+      "description": "Active, upcoming and expired warranty terms. Cloud read. Args: vin.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -698,7 +698,7 @@
     },
     {
       "name": "tesla_wake_vehicle",
-      "description": "Wake a sleeping car. Billed ($0.02), 3 per minute; re-check status after. Ask first.",
+      "description": "Wake a sleeping car (billed; harmless if awake). Then re-check status. Args: vin.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -741,7 +741,7 @@
     },
     {
       "name": "tesla_navigate_to",
-      "description": "Send a destination to the car's navigation by coordinates.",
+      "description": "Send a destination to the car's navigation. Args: vin, latitude, longitude.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -802,7 +802,7 @@
     },
     {
       "name": "tesla_start_charging",
-      "description": "Start charging. The car must be plugged in.",
+      "description": "Start charging (car must be plugged in). Args: vin.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -827,7 +827,7 @@
     },
     {
       "name": "tesla_stop_charging",
-      "description": "Stop charging. The cable stays latched until it is released.",
+      "description": "Stop charging; the cable stays latched. Args: vin.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -852,7 +852,7 @@
     },
     {
       "name": "tesla_set_charge_limit",
-      "description": "Set the charge limit as a percent of full.",
+      "description": "Set the charge limit. Args: vin, percent (50-100).",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -884,7 +884,7 @@
     },
     {
       "name": "tesla_set_charging_amps",
-      "description": "Set the charging current the car draws.",
+      "description": "Set the charging current. Args: vin, amps (1-48).",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -916,7 +916,7 @@
     },
     {
       "name": "tesla_open_charge_port",
-      "description": "Open the charge port door, or unlock the latched cable.",
+      "description": "Open the charge port door or release the latched cable. Args: vin.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -941,7 +941,7 @@
     },
     {
       "name": "tesla_close_charge_port",
-      "description": "Close the charge port door, on cars that motorise it.",
+      "description": "Close the charge port door (motorised ports only). Args: vin.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -966,7 +966,7 @@
     },
     {
       "name": "tesla_start_climate",
-      "description": "Turn climate on and precondition the cabin to its set temperature.",
+      "description": "Turn climate on and precondition the cabin. Args: vin.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -990,7 +990,7 @@
     },
     {
       "name": "tesla_stop_climate",
-      "description": "Turn climate off.",
+      "description": "Turn climate off. Args: vin.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -1014,7 +1014,7 @@
     },
     {
       "name": "tesla_set_cabin_temperature",
-      "description": "Set the cabin temperature in Celsius.",
+      "description": "Set cabin temperature in Celsius. Args: vin, driver_celsius (15-28), passenger_celsius.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -1051,7 +1051,7 @@
     },
     {
       "name": "tesla_set_preconditioning_max",
-      "description": "Turn max defrost on or off.",
+      "description": "Turn max defrost on or off. Args: vin, enabled (bool).",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -1080,7 +1080,7 @@
     },
     {
       "name": "tesla_lock_doors",
-      "description": "Lock the doors.",
+      "description": "Lock the doors. Args: vin.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -1104,7 +1104,7 @@
     },
     {
       "name": "tesla_unlock_doors",
-      "description": "Unlock the doors. This is an access change, not a convenience.",
+      "description": "Unlock the doors; the car stays unlocked. Args: vin.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -1128,7 +1128,7 @@
     },
     {
       "name": "tesla_set_sentry_mode",
-      "description": "Turn Sentry Mode on or off. Turning it off is an access change.",
+      "description": "Turn Sentry Mode on or off. Args: vin, enabled (bool).",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -1157,7 +1157,7 @@
     },
     {
       "name": "tesla_flash_lights",
-      "description": "Flash the headlights once, to find the car.",
+      "description": "Flash the headlights once. Args: vin.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -1181,7 +1181,7 @@
     },
     {
       "name": "tesla_honk_horn",
-      "description": "Honk the horn once, to find the car.",
+      "description": "Honk the horn once. Args: vin.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
