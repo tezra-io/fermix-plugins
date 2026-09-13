@@ -1,0 +1,742 @@
+{
+  "schema_version": 2,
+  "name": "tesla",
+  "display_name": "Tesla",
+  "description": "Check your Tesla's charge, climate, location, alerts, and charging history.",
+  "category": "productivity",
+  "version": "1.0.0",
+  "default_enabled": false,
+  "interface": {
+    "short_description": "See your Tesla's state and charging history",
+    "developer_name": "Fermix",
+    "brand_color": "#E82127",
+    "logo": "assets/logo.svg",
+    "privacy_policy_url": "https://www.tesla.com/legal/privacy",
+    "terms_of_service_url": "https://www.tesla.com/legal"
+  },
+  "auth": {
+    "type": "oauth2",
+    "provider": "tesla",
+    "scopes": [
+      "openid",
+      "offline_access",
+      "vehicle_device_data",
+      "vehicle_location",
+      "vehicle_charging_cmds",
+      "vehicle_cmds"
+    ]
+  },
+  "config": [
+    {
+      "key": "ALLOW_WAKE",
+      "prompt": "Allow waking vehicles: set to true to enable tesla_wake_vehicle (each wake is billed)",
+      "required": false
+    }
+  ],
+  "tools": [
+    {
+      "name": "tesla_list_vehicles",
+      "description": "Vehicles on the account with cloud state. Call first to get VINs.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "vehicle_device_data"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "request": {
+        "method": "GET",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/vehicles",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/vehicles"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response",
+          "fields": [
+            "vin",
+            "display_name",
+            "state",
+            "in_service",
+            "access_type",
+            "vehicle_id",
+            "api_version",
+            "calendar_enabled"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tesla_get_vehicle_status",
+      "description": "Cloud connection state (online, asleep, offline) without waking the car.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "vehicle_device_data"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/vehicles/{vin}",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/vehicles/{vin}"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response",
+          "fields": [
+            "vin",
+            "display_name",
+            "state",
+            "in_service",
+            "access_type",
+            "api_version",
+            "vehicle_id"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tesla_get_vehicle_data",
+      "description": "One live data section from the car. Billed; fails 408 when asleep, never wakes.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "vehicle_device_data"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "section": {
+            "type": "string",
+            "enum": [
+              "charge_state",
+              "climate_state",
+              "vehicle_state",
+              "vehicle_config",
+              "closures_state",
+              "gui_settings",
+              "charge_schedule_data",
+              "preconditioning_schedule_data"
+            ],
+            "description": "One section per call: charge_state for battery, range and charging; climate_state for temperatures; vehicle_state for odometer, locks, tyres, software and sentry; vehicle_config for trim; closures_state for doors, windows and trunks; gui_settings for the car's display units; charge_schedule_data and preconditioning_schedule_data for schedules."
+          }
+        },
+        "required": [
+          "vin",
+          "section"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/vehicles/{vin}/vehicle_data",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/vehicles/{vin}/vehicle_data"
+        },
+        "query": {
+          "endpoints": "{section}"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response",
+          "fields": [
+            "vin",
+            "state",
+            "charge_state",
+            "climate_state",
+            "vehicle_state",
+            "vehicle_config",
+            "closures_state",
+            "gui_settings",
+            "charge_schedule_data",
+            "preconditioning_schedule_data"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tesla_get_vehicle_location",
+      "description": "Live GPS position. Shows a sharing icon in the car; billed.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "vehicle_device_data",
+        "vehicle_location"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/vehicles/{vin}/vehicle_data",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/vehicles/{vin}/vehicle_data"
+        },
+        "query": {
+          "endpoints": "location_data"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response.drive_state",
+          "fields": [
+            "latitude",
+            "longitude",
+            "heading",
+            "speed",
+            "power",
+            "shift_state",
+            "gps_as_of",
+            "timestamp",
+            "native_location_supported"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tesla_get_fleet_status",
+      "description": "Firmware, command protocol requirement, virtual key pairing, telemetry version.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "vehicle_device_data"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/vehicles/fleet_status",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/vehicles/fleet_status"
+        },
+        "body": {
+          "vins": [
+            "{vin}"
+          ]
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response",
+          "fields": [
+            "key_paired_vins",
+            "unpaired_vins",
+            "vehicle_info"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tesla_get_mobile_access",
+      "description": "Whether the car's Allow Mobile Access setting is on.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/vehicles/{vin}/mobile_enabled",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/vehicles/{vin}/mobile_enabled"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response",
+          "fields": [
+            "result",
+            "reason"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tesla_get_vehicle_alerts",
+      "description": "Recent alerts the car raised, with times and any owner-facing text.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "vehicle_device_data"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/vehicles/{vin}/recent_alerts",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/vehicles/{vin}/recent_alerts"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response.recent_alerts",
+          "fields": [
+            "name",
+            "time",
+            "audience",
+            "user_text"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tesla_get_service_status",
+      "description": "Service status for the car: state, estimated completion, visit number.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "vehicle_device_data"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/vehicles/{vin}/service_data",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/vehicles/{vin}/service_data"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response",
+          "fields": [
+            "service_status",
+            "service_etc",
+            "service_visit_number",
+            "status_id"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tesla_get_release_notes",
+      "description": "Software release notes for the car's installed or staged update.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "vehicle_device_data"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "staged": {
+            "type": "boolean",
+            "default": false,
+            "description": "true returns notes for a staged update that is downloaded but not installed."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/vehicles/{vin}/release_notes",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/vehicles/{vin}/release_notes"
+        },
+        "query": {
+          "staged": "{staged}"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response"
+        }
+      }
+    },
+    {
+      "name": "tesla_get_nearby_charging_sites",
+      "description": "Chargers near the car's current position. Billed; the car must be online.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "vehicle_device_data"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "count": {
+            "type": "integer",
+            "default": 5,
+            "minimum": 1,
+            "maximum": 25,
+            "description": "Sites of each kind to return, 1-25. Keep small unless the user asks for more."
+          },
+          "radius": {
+            "type": "integer",
+            "default": 25,
+            "minimum": 1,
+            "maximum": 200,
+            "description": "Search radius in miles, 1-200."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/vehicles/{vin}/nearby_charging_sites",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/vehicles/{vin}/nearby_charging_sites"
+        },
+        "query": {
+          "count": "{count}",
+          "radius": "{radius}"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response",
+          "fields": [
+            "superchargers",
+            "destination_charging",
+            "timestamp"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tesla_list_charging_history",
+      "description": "Supercharging and other Tesla-billed sessions with fees. Not home charging.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "vehicle_charging_cmds"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "start_time": {
+            "type": "string",
+            "description": "Start of the window, ISO-8601 with offset, e.g. 2026-08-01T00:00:00-07:00."
+          },
+          "end_time": {
+            "type": "string",
+            "description": "End of the window, ISO-8601 with offset, e.g. 2026-09-01T00:00:00-07:00."
+          },
+          "page_no": {
+            "type": "integer",
+            "default": 1,
+            "minimum": 1,
+            "description": "Page to fetch, from 1. Page only when the user asks for more."
+          },
+          "page_size": {
+            "type": "integer",
+            "default": 25,
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Sessions per page, 1-50."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/dx/charging/history",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/dx/charging/history"
+        },
+        "query": {
+          "vin": "{vin}",
+          "startTime": "{start_time}",
+          "endTime": "{end_time}",
+          "pageNo": "{page_no}",
+          "pageSize": "{page_size}"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response.data",
+          "fields": [
+            "sessionId",
+            "vin",
+            "siteLocationName",
+            "chargeStartDateTime",
+            "chargeStopDateTime",
+            "unlatchDateTime",
+            "countryCode",
+            "fees",
+            "billingType",
+            "vehicleMakeType"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tesla_get_vehicle_options",
+      "description": "Trim, paint, wheels, and packages as Tesla option codes.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "vehicle_device_data"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/dx/vehicles/options",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/dx/vehicles/options"
+        },
+        "query": {
+          "vin": "{vin}"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response.codes",
+          "fields": [
+            "code",
+            "displayName",
+            "isActive",
+            "colorCode"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tesla_get_warranty",
+      "description": "Warranty cover for the car: active, upcoming, and expired terms.",
+      "policy_class": "external_api",
+      "read_only": true,
+      "requires_scopes": [
+        "vehicle_device_data"
+      ],
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/dx/warranty/details",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/dx/warranty/details"
+        },
+        "query": {
+          "vin": "{vin}"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response",
+          "fields": [
+            "activeWarranty",
+            "upcomingWarranty",
+            "expiredWarranty"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tesla_wake_vehicle",
+      "description": "Wake a sleeping car. Billed ($0.02), 3 per minute; re-check status after. Ask first.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_device_data",
+        "vehicle_cmds"
+      ],
+      "requires_setting": "ALLOW_WAKE",
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/vehicles/{vin}/wake_up",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/vehicles/{vin}/wake_up"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response",
+          "fields": [
+            "vin",
+            "state"
+          ]
+        }
+      }
+    }
+  ],
+  "skills": [
+    {
+      "name": "tesla-plugin",
+      "path": "skills/tesla-plugin/SKILL.md"
+    }
+  ],
+  "health_check": {
+    "kind": "local_readiness",
+    "requires_auth": true
+  },
+  "plugin_api": 2,
+  "min_core_version": "0.11.0"
+}
