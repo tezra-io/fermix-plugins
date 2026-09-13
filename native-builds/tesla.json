@@ -1,0 +1,13 @@
+{
+  "toolchain": "go",
+  "module_path": "plugins/tesla/src",
+  "package": "./cmd/fermix-tesla",
+  "binary": "fermix-tesla",
+  "go_version": "1.26",
+  "targets": {
+    "macos-aarch64": "macos-14",
+    "macos-x86_64": "macos-13",
+    "linux-x86_64": "ubuntu-24.04",
+    "linux-aarch64": "ubuntu-24.04-arm"
+  }
+}

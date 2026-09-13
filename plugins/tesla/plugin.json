@@ -2,12 +2,12 @@
   "schema_version": 2,
   "name": "tesla",
   "display_name": "Tesla",
-  "description": "Check your Tesla's charge, climate, location, alerts, and charging history.",
+  "description": "Check your Tesla's charge, climate, location, alerts and history, and control charging, climate and locks.",
   "category": "productivity",
   "version": "1.0.0",
   "default_enabled": false,
   "interface": {
-    "short_description": "See your Tesla's state and charging history",
+    "short_description": "See your Tesla's state, and control it when you allow commands",
     "developer_name": "Fermix",
     "brand_color": "#E82127",
     "logo": "assets/logo.svg",
@@ -26,17 +26,30 @@
       "vehicle_cmds"
     ]
   },
+  "runtime": {
+    "kind": "binary",
+    "command": "fermix-tesla",
+    "vendored": true,
+    "requires_setting": "ALLOW_COMMANDS"
+  },
   "config": [
     {
-      "key": "ALLOW_WAKE",
-      "prompt": "Allow waking vehicles: set to true to enable tesla_wake_vehicle (each wake is billed)",
-      "required": false
+      "key": "ALLOW_COMMANDS",
+      "prompt": "Allow vehicle commands (each command is billed)",
+      "required": false,
+      "kind": "boolean"
+    },
+    {
+      "key": "SIGNING_KEY_PATH",
+      "prompt": "Path to the app's private key PEM used to sign vehicle commands",
+      "required": false,
+      "kind": "text"
     }
   ],
   "tools": [
     {
       "name": "tesla_list_vehicles",
-      "description": "Vehicles on the account with cloud state. Call first to get VINs.",
+      "description": "List cars: vin, display_name, cloud state. Cloud read. Args: none.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -73,7 +86,7 @@
     },
     {
       "name": "tesla_get_vehicle_status",
-      "description": "Cloud connection state (online, asleep, offline) without waking the car.",
+      "description": "Cloud state of one car: online, asleep, offline. Never wakes it. Args: vin.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -119,7 +132,7 @@
     },
     {
       "name": "tesla_get_vehicle_data",
-      "description": "One live data section from the car. Billed; fails 408 when asleep, never wakes.",
+      "description": "One live section from the car (billed; 408 when asleep). Args: vin, section.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -186,7 +199,7 @@
     },
     {
       "name": "tesla_get_vehicle_location",
-      "description": "Live GPS position. Shows a sharing icon in the car; billed.",
+      "description": "Live GPS position (billed; shows a sharing icon in the car). Args: vin.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -238,7 +251,7 @@
     },
     {
       "name": "tesla_get_fleet_status",
-      "description": "Firmware, command protocol requirement, virtual key pairing, telemetry version.",
+      "description": "Firmware, command-protocol need, key pairing, telemetry version. Args: vin.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -285,7 +298,7 @@
     },
     {
       "name": "tesla_get_mobile_access",
-      "description": "Whether the car's Allow Mobile Access setting is on.",
+      "description": "Whether the car's Allow Mobile Access setting is on. Args: vin.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -326,7 +339,7 @@
     },
     {
       "name": "tesla_get_vehicle_alerts",
-      "description": "Recent alerts the car raised, with times and any owner-facing text.",
+      "description": "Recent alerts with times and any owner text. Cloud read. Args: vin.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -369,7 +382,7 @@
     },
     {
       "name": "tesla_get_service_status",
-      "description": "Service status for the car: state, estimated completion, visit number.",
+      "description": "Service state, estimated completion, visit number. Cloud read. Args: vin.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -412,7 +425,7 @@
     },
     {
       "name": "tesla_get_release_notes",
-      "description": "Software release notes for the car's installed or staged update.",
+      "description": "Software release notes, installed or staged. Args: vin, staged (bool).",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -457,7 +470,7 @@
     },
     {
       "name": "tesla_get_nearby_charging_sites",
-      "description": "Chargers near the car's current position. Billed; the car must be online.",
+      "description": "Chargers near the car (billed; car must be online). Args: vin, count, radius.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -517,7 +530,7 @@
     },
     {
       "name": "tesla_list_charging_history",
-      "description": "Supercharging and other Tesla-billed sessions with fees. Not home charging.",
+      "description": "Tesla-billed charging sessions with fees. Args: vin, start_time, end_time, page_no, page_size.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -594,7 +607,7 @@
     },
     {
       "name": "tesla_get_vehicle_options",
-      "description": "Trim, paint, wheels, and packages as Tesla option codes.",
+      "description": "Trim, paint, wheels, packages as option codes. Cloud read. Args: vin.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -640,7 +653,7 @@
     },
     {
       "name": "tesla_get_warranty",
-      "description": "Warranty cover for the car: active, upcoming, and expired terms.",
+      "description": "Active, upcoming and expired warranty terms. Cloud read. Args: vin.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
@@ -685,14 +698,14 @@
     },
     {
       "name": "tesla_wake_vehicle",
-      "description": "Wake a sleeping car. Billed ($0.02), 3 per minute; re-check status after. Ask first.",
+      "description": "Wake a sleeping car (billed; harmless if awake). Then re-check status. Args: vin.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
         "vehicle_device_data",
         "vehicle_cmds"
       ],
-      "requires_setting": "ALLOW_WAKE",
+      "requires_setting": "ALLOW_COMMANDS",
       "rail": "http",
       "parameters": {
         "type": "object",
@@ -724,6 +737,470 @@
             "state"
           ]
         }
+      }
+    },
+    {
+      "name": "tesla_navigate_to",
+      "description": "Send a destination to the car's navigation. Args: vin, latitude, longitude.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "requires_setting": "ALLOW_COMMANDS",
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90,
+            "description": "Destination latitude in decimal degrees."
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180,
+            "description": "Destination longitude in decimal degrees."
+          }
+        },
+        "required": [
+          "vin",
+          "latitude",
+          "longitude"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/vehicles/{vin}/command/navigation_gps_request",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/vehicles/{vin}/command/navigation_gps_request"
+        },
+        "body": {
+          "lat": "{latitude}",
+          "lon": "{longitude}",
+          "order": 0
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response",
+          "fields": [
+            "result",
+            "reason"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tesla_start_charging",
+      "description": "Start charging (car must be plugged in). Args: vin.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds",
+        "vehicle_charging_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      }
+    },
+    {
+      "name": "tesla_stop_charging",
+      "description": "Stop charging; the cable stays latched. Args: vin.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds",
+        "vehicle_charging_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      }
+    },
+    {
+      "name": "tesla_set_charge_limit",
+      "description": "Set the charge limit. Args: vin, percent (50-100).",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds",
+        "vehicle_charging_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "percent": {
+            "type": "integer",
+            "minimum": 50,
+            "maximum": 100,
+            "description": "Charge limit percent, 50-100."
+          }
+        },
+        "required": [
+          "vin",
+          "percent"
+        ]
+      }
+    },
+    {
+      "name": "tesla_set_charging_amps",
+      "description": "Set the charging current. Args: vin, amps (1-48).",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds",
+        "vehicle_charging_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "amps": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 48,
+            "description": "Charging current in amps, 1-48. The car clamps it to what the supply allows."
+          }
+        },
+        "required": [
+          "vin",
+          "amps"
+        ]
+      }
+    },
+    {
+      "name": "tesla_open_charge_port",
+      "description": "Open the charge port door or release the latched cable. Args: vin.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds",
+        "vehicle_charging_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      }
+    },
+    {
+      "name": "tesla_close_charge_port",
+      "description": "Close the charge port door (motorised ports only). Args: vin.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds",
+        "vehicle_charging_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      }
+    },
+    {
+      "name": "tesla_start_climate",
+      "description": "Turn climate on and precondition the cabin. Args: vin.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      }
+    },
+    {
+      "name": "tesla_stop_climate",
+      "description": "Turn climate off. Args: vin.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      }
+    },
+    {
+      "name": "tesla_set_cabin_temperature",
+      "description": "Set cabin temperature in Celsius. Args: vin, driver_celsius (15-28), passenger_celsius.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "driver_celsius": {
+            "type": "number",
+            "minimum": 15,
+            "maximum": 28,
+            "description": "Driver-side temperature in Celsius, 15-28."
+          },
+          "passenger_celsius": {
+            "type": "number",
+            "minimum": 15,
+            "maximum": 28,
+            "description": "Passenger-side temperature in Celsius, 15-28. Defaults to the driver's."
+          }
+        },
+        "required": [
+          "vin",
+          "driver_celsius"
+        ]
+      }
+    },
+    {
+      "name": "tesla_set_preconditioning_max",
+      "description": "Turn max defrost on or off. Args: vin, enabled (bool).",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "true turns max defrost on, false turns it off."
+          }
+        },
+        "required": [
+          "vin",
+          "enabled"
+        ]
+      }
+    },
+    {
+      "name": "tesla_lock_doors",
+      "description": "Lock the doors. Args: vin.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      }
+    },
+    {
+      "name": "tesla_unlock_doors",
+      "description": "Unlock the doors; the car stays unlocked. Args: vin.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      }
+    },
+    {
+      "name": "tesla_set_sentry_mode",
+      "description": "Turn Sentry Mode on or off. Args: vin, enabled (bool).",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "true arms Sentry Mode, false disarms it."
+          }
+        },
+        "required": [
+          "vin",
+          "enabled"
+        ]
+      }
+    },
+    {
+      "name": "tesla_flash_lights",
+      "description": "Flash the headlights once. Args: vin.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      }
+    },
+    {
+      "name": "tesla_honk_horn",
+      "description": "Honk the horn once. Args: vin.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
       }
     }
   ],

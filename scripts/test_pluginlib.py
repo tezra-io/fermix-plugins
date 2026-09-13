@@ -13,9 +13,11 @@ Run: python3 scripts/test_pluginlib.py
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 
@@ -224,6 +226,52 @@ def runtime_of(**overrides):
     return runtime
 
 
+COMMANDS_CONFIG = {
+    "key": "ALLOW_COMMANDS",
+    "prompt": "Allow vehicle commands",
+    "required": False,
+    "kind": "boolean",
+}
+
+
+def mcp_tool(**overrides):
+    """One plugin-api-2 mcp-rail entry: a PREVIEW of a tool the local runtime
+    advertises over MCP, carried for documentation and scope declaration. It is
+    never the registration — discovery against the running server is."""
+    tool = {
+        "name": f"{PLUGIN}_lock_doors",
+        "description": "Lock the doors.",
+        "policy_class": "external_api",
+        "read_only": False,
+        "rail": "mcp",
+        "parameters": {
+            "type": "object",
+            "properties": {"vin": {"type": "string"}},
+            "required": ["vin"],
+        },
+    }
+    tool.update(overrides)
+    return tool
+
+
+def local_runtime(**overrides):
+    runtime = {"kind": "binary", "command": "acme-helper", "vendored": True}
+    runtime.update(overrides)
+    return runtime
+
+
+def hybrid_manifest(**overrides):
+    """An http-rail plugin that ALSO ships a local MCP runtime (M40 §3.2): the
+    shape the Tesla plugin uses — declarative reads beside a signing helper."""
+    manifest = api2_manifest(
+        tools=[http_tool(), mcp_tool()],
+        runtime=local_runtime(requires_setting="ALLOW_COMMANDS"),
+        config=[dict(COMMANDS_CONFIG)],
+    )
+    manifest.update(overrides)
+    return manifest
+
+
 # --- existing plugin-api-2 guards (unchanged) --------------------------------
 
 
@@ -425,6 +473,46 @@ class RequiresSetting(Assertions):
     def test_at_most_one_setting_per_tool(self):
         for value in (["ALLOW_WAKE"], ["ALLOW_WAKE", "ALLOW_WAKE"], "", 7, True):
             self.assert_error(self._errors(value), "requires_setting must be a single config key string")
+
+
+# --- 1d. config entry kind: text by default, boolean opt-in ------------------
+
+
+class ConfigKind(Assertions):
+    """A config entry declares how the operator answers it: free text (the
+    default when absent) or a boolean switch. Any other spelling is refused
+    here, so an unknown widget name can never reach core as a setting nobody
+    can answer."""
+
+    def _entry(self, **overrides):
+        entry = {"key": "ALLOW_WAKE", "prompt": "Allow waking vehicles", "required": False}
+        entry.update(overrides)
+        return entry
+
+    def _errors(self, **overrides):
+        return pluginlib._validate_config(api2_manifest(config=[self._entry(**overrides)]))
+
+    def test_absent_kind_is_accepted(self):
+        self.assert_clean(self._errors())
+
+    def test_text_kind_is_accepted(self):
+        self.assert_clean(self._errors(kind="text"))
+
+    def test_boolean_kind_is_accepted(self):
+        self.assert_clean(self._errors(kind="boolean"))
+
+    def test_unknown_kind_is_refused(self):
+        self.assert_error(
+            self._errors(kind="switch"),
+            "config.ALLOW_WAKE: kind must be one of ['boolean', 'text']",
+        )
+
+    def test_non_string_kind_is_refused(self):
+        for value in (True, 1, None, ["boolean"], {"kind": "boolean"}):
+            self.assert_error(
+                self._errors(kind=value),
+                "config.ALLOW_WAKE: kind must be one of ['boolean', 'text']",
+            )
 
 
 # --- 2/3. plugin-api gating: api 2 must reject every api-3-only field ---------
@@ -1479,6 +1567,267 @@ class DraftHandling(TempPlugin):
         self.assertEqual(result.returncode, 1)
         self.assertIn("no STAGE0_PENDING placeholder remains", result.stderr)
         self.assertNotIn("SKIPPED", result.stdout)
+
+
+# --- 16. runtime.requires_setting: gate the local runtime on a declared key --
+
+
+class RuntimeRequiresSetting(Assertions):
+    """A local runtime may be gated on ONE operator setting, and only on one
+    this manifest declares: Fermix spawns the helper while that key reads
+    "true" and never otherwise. A key the manifest does not declare would
+    leave a runtime nobody can ever start, with nothing at install to say so —
+    the same failure `requires_setting` on a tool is refused for."""
+
+    def _errors(self, setting, config=(COMMANDS_CONFIG,)):
+        manifest = hybrid_manifest(
+            runtime=local_runtime(requires_setting=setting),
+            config=[dict(entry) for entry in config],
+        )
+        return pluginlib._validate_runtime(manifest)
+
+    def test_declared_config_key_is_accepted(self):
+        self.assert_clean(self._errors("ALLOW_COMMANDS"))
+
+    def test_absent_requires_setting_is_accepted(self):
+        manifest = hybrid_manifest(runtime=local_runtime())
+        self.assert_clean(pluginlib._validate_runtime(manifest))
+
+    def test_undeclared_config_key_is_refused(self):
+        self.assert_error(
+            self._errors("ALLOW_SPEED"),
+            "runtime.requires_setting names an undeclared config key ALLOW_SPEED",
+        )
+
+    def test_a_manifest_without_config_declares_no_keys(self):
+        self.assert_error(
+            self._errors("ALLOW_COMMANDS", config=()),
+            "runtime.requires_setting names an undeclared config key ALLOW_COMMANDS",
+        )
+
+    def test_at_most_one_setting_per_runtime(self):
+        for value in (["ALLOW_COMMANDS"], "", "   ", 7, True, {"key": "ALLOW_COMMANDS"}):
+            self.assert_error(
+                self._errors(value),
+                "runtime.requires_setting must be a single config key string",
+            )
+
+    def test_a_remote_runtime_refuses_the_gate(self):
+        """A remote runtime spawns nothing, so there is no process to gate."""
+        manifest = remote_manifest(runtime=runtime_of(requires_setting="ALLOW_COMMANDS"))
+        self.assert_error(
+            pluginlib._validate_runtime(manifest),
+            "runtime has unknown key 'requires_setting'",
+        )
+
+
+# --- 17. hybrid plugins: http tools beside an mcp-rail local runtime ---------
+
+
+class HybridRails(TempPlugin):
+    """One plugin may carry BOTH rails: declarative http tools Fermix calls
+    itself, and mcp-rail previews of what its local runtime advertises. No
+    publish-side rule may assume a plugin has exactly one rail."""
+
+    def test_a_hybrid_manifest_validates_end_to_end(self):
+        plugin_dir = self.materialize(hybrid_manifest())
+        self.assertEqual(pluginlib.validate_plugin_dir(plugin_dir)["name"], PLUGIN)
+
+    def test_a_hybrid_source_tree_packages_without_a_built_binary(self):
+        """CI packs the checked-in tree, where bin/ has not been built yet."""
+        plugin_dir = self.materialize(hybrid_manifest())
+        errors, _members, _packed_bytes = check_plugin_package.check_package(plugin_dir)
+        self.assert_clean(errors)
+
+    def test_an_mcp_preview_may_carry_a_parameters_schema(self):
+        self.assert_clean(pluginlib._validate_tools(hybrid_manifest(), Path(PLUGIN)))
+
+    def test_an_mcp_preview_must_not_carry_a_requires_setting_gate(self):
+        """Core refuses it (:requires_setting_on_mcp_tool): the gate governs
+        what Plugins.Capabilities advertises, and previews never register
+        there. Accepting it here would publish a manifest that cannot install."""
+        manifest = hybrid_manifest(
+            tools=[http_tool(), mcp_tool(requires_setting="ALLOW_COMMANDS")]
+        )
+        self.assert_error(
+            pluginlib._validate_tools(manifest, Path(PLUGIN)),
+            "requires_setting is not allowed on an mcp-rail tool",
+        )
+
+    def test_an_http_tool_keeps_its_gate_in_a_hybrid_manifest(self):
+        manifest = hybrid_manifest(
+            tools=[http_tool(requires_setting="ALLOW_COMMANDS"), mcp_tool()]
+        )
+        self.assert_clean(pluginlib._validate_tools(manifest, Path(PLUGIN)))
+
+    def test_a_runtime_with_no_mcp_tool_is_still_refused(self):
+        manifest = hybrid_manifest(tools=[http_tool()])
+        self.assert_error(
+            pluginlib._validate_runtime(manifest),
+            "runtime block declared but no tool has rail: mcp",
+        )
+
+
+# --- 18. a vendored binary must be IN the release archive that ships it ------
+
+
+class VendoredBinaryListing(Assertions):
+    """`vendored: true` means the command resolves under `bin/<target>/` inside
+    the artifact. An archive that ships the manifest without the binary
+    installs cleanly and then fails at every spawn, so the release path checks
+    the packed listing. A source checkout has no built binary and is NOT
+    subject to the rule — which is why this is its own check and not part of
+    `check_archive_listing`, whose other caller packs the source tree."""
+
+    BIN = "bin/macos-aarch64/acme-helper"
+
+    def _errors(self, members, manifest=None):
+        listing = ["./", "./plugin.json", *members]
+        return pluginlib.check_vendored_binary_listing(listing, manifest or hybrid_manifest())
+
+    def test_a_listing_carrying_the_binary_is_clean(self):
+        self.assert_clean(self._errors([f"./{self.BIN}"]))
+
+    def test_a_listing_with_no_bin_directory_is_refused(self):
+        self.assert_error(
+            self._errors(["./skills/", "./skills/acme/SKILL.md"]),
+            "carries no bin/<target>/ directory",
+        )
+
+    def test_a_binary_under_the_wrong_name_is_refused(self):
+        self.assert_error(
+            self._errors(["./bin/macos-aarch64/acme"]),
+            "bin/macos-aarch64/ does not contain it",
+        )
+
+    def test_every_packed_target_must_carry_the_binary(self):
+        errors = self._errors([f"./{self.BIN}", "./bin/linux-x86_64/README"])
+        self.assert_error(errors, "bin/linux-x86_64/ does not contain it")
+        self.assert_no_error(errors, "bin/macos-aarch64/")
+
+    def test_a_nested_path_does_not_satisfy_the_rule(self):
+        self.assert_error(
+            self._errors(["./bin/macos-aarch64/inner/acme-helper"]),
+            "bin/macos-aarch64/ does not contain it",
+        )
+
+    def test_a_non_vendored_runtime_is_not_subject_to_the_rule(self):
+        manifest = hybrid_manifest(runtime=local_runtime(vendored=False))
+        self.assert_clean(self._errors([], manifest=manifest))
+
+    def test_a_non_binary_runtime_kind_is_not_subject_to_the_rule(self):
+        manifest = hybrid_manifest(
+            runtime=local_runtime(kind="node", command="node", args=["src/index.js"], vendored=False)
+        )
+        self.assert_clean(self._errors([], manifest=manifest))
+
+    def test_a_manifest_with_no_runtime_is_not_subject_to_the_rule(self):
+        self.assert_clean(self._errors([], manifest=api2_manifest()))
+
+    def test_the_shared_boundary_check_still_passes_a_bin_less_listing(self):
+        """The source-tree caller must stay green: same listing, no findings."""
+        self.assert_clean(
+            pluginlib.check_archive_listing(["./", "./plugin.json"], has_runtime=True)
+        )
+
+
+# --- 19. release-plugin.yml: the meta job resolves both toolchains ----------
+
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+WORKFLOW = REPO_ROOT / ".github" / "workflows" / "release-plugin.yml"
+
+
+def meta_script():
+    """The `meta` job's inline Python, lifted out of the workflow heredoc.
+
+    The script is authored in the YAML, so the test runs THAT text rather than
+    a copy which would drift the moment the workflow changed.
+    """
+    match = re.search(r"python3 - <<'PY'\n(.*?)\n *PY\n", WORKFLOW.read_text(), re.S)
+    if match is None:
+        raise AssertionError("release-plugin.yml no longer embeds the meta job's python heredoc")
+    return textwrap.dedent(match.group(1))
+
+
+class ReleaseWorkflowMeta(Assertions):
+    """One descriptor shape per toolchain, both resolved by the same job. The
+    cargo descriptor has no `toolchain` key at all (it predates the field), so
+    absence must keep meaning rust — otherwise the sidecar stops building."""
+
+    def setUp(self):
+        self._environ = dict(os.environ)
+        self._cwd = os.getcwd()
+
+    def tearDown(self):
+        os.chdir(self._cwd)
+        os.environ.clear()
+        os.environ.update(self._environ)
+
+    def run_meta(self, **env):
+        """Execute the job's script against this repo; returns its GITHUB_OUTPUT."""
+        with tempfile.TemporaryDirectory(prefix="fermix-meta-") as tmp:
+            output = Path(tmp) / "github_output"
+            output.touch()
+            os.environ.update({"GITHUB_OUTPUT": str(output), "REF_NAME": "", "DISPATCH_PLUGIN": ""})
+            os.environ.update(env)
+            os.chdir(REPO_ROOT)
+            exec(compile(meta_script(), "release-plugin.yml:meta", "exec"), {"__name__": "__main__"})
+            return dict(line.split("=", 1) for line in output.read_text().splitlines() if line)
+
+    def test_a_go_descriptor_resolves_the_go_lane(self):
+        out = self.run_meta(EVENT="push", REF_NAME="tesla/v1.0.0")
+        self.assertEqual(out["native"], "true")
+        self.assertEqual(out["toolchain"], "go")
+        self.assertEqual(out["binary"], "fermix-tesla")
+        self.assertEqual(out["module_path"], "plugins/tesla/src")
+        self.assertEqual(out["package"], "./cmd/fermix-tesla")
+        self.assertEqual(out["go_version"], "1.26")
+        self.assertEqual(out["repo"], "")
+        self.assertEqual(out["crate_path"], "")
+
+    def test_the_go_matrix_maps_every_target_to_goos_and_goarch(self):
+        out = self.run_meta(EVENT="push", REF_NAME="tesla/v1.0.0")
+        include = json.loads(out["matrix"])["include"]
+        by_target = {entry["target"]: entry for entry in include}
+        self.assertEqual(
+            {t: (e["goos"], e["goarch"]) for t, e in by_target.items()},
+            {
+                "macos-aarch64": ("darwin", "arm64"),
+                "macos-x86_64": ("darwin", "amd64"),
+                "linux-x86_64": ("linux", "amd64"),
+                "linux-aarch64": ("linux", "arm64"),
+            },
+        )
+        self.assertEqual(by_target["macos-x86_64"]["runner"], "macos-13")
+        self.assertEqual(by_target["linux-aarch64"]["runner"], "ubuntu-24.04-arm")
+
+    def test_a_descriptor_without_a_toolchain_key_is_still_rust(self):
+        out = self.run_meta(EVENT="push", REF_NAME="computer_use_sidecar/v0.1.0")
+        self.assertEqual(out["toolchain"], "rust")
+        self.assertEqual(out["crate_path"], "native/computer-use-sidecar")
+        self.assertEqual(out["binary"], "fermix-computer-use")
+        self.assertEqual(out["module_path"], "")
+        include = json.loads(out["matrix"])["include"]
+        self.assertEqual(
+            {entry["target"]: entry["triple"] for entry in include},
+            {"macos-aarch64": "aarch64-apple-darwin", "linux-x86_64": "x86_64-unknown-linux-gnu"},
+        )
+
+    def test_a_plugin_with_no_descriptor_is_declarative(self):
+        out = self.run_meta(EVENT="workflow_dispatch", DISPATCH_PLUGIN="github")
+        self.assertEqual(out["native"], "false")
+        self.assertEqual(out["toolchain"], "")
+        self.assertEqual(json.loads(out["matrix"]), {"include": []})
+
+    def test_a_tag_version_that_disagrees_with_the_manifest_fails(self):
+        with self.assertRaises(SystemExit):
+            self.run_meta(EVENT="push", REF_NAME="tesla/v9.9.9")
+
+    def test_a_dispatch_dry_run_takes_its_version_from_the_manifest(self):
+        out = self.run_meta(EVENT="workflow_dispatch", DISPATCH_PLUGIN="tesla")
+        self.assertEqual(out["toolchain"], "go")
+        self.assertEqual(out["version"], json.loads((REPO_ROOT / "plugins/tesla/plugin.json").read_text())["version"])
 
 
 if __name__ == "__main__":

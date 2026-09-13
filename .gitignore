@@ -8,3 +8,5 @@ __pycache__/
 
 # Local development scratch (never published)
 .dev-local/
+# Built plugin binaries (published through a release, never committed)
+plugins/*/bin/

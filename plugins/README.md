@@ -36,6 +36,19 @@ this plugin's code and deps.
 | `mcp` rail, local process | `kind: node`/`python`/`binary`/`escript` | yes | `src/`, `bin/`, ecosystem files |
 | `mcp` rail, remote service | `kind: remote_mcp` (`plugin_api: 3`) | **no** | none |
 
+The first two combine: a **hybrid** plugin declares `http`-rail tools Fermix
+calls itself *and* a local `runtime`, whose `mcp`-rail entries are previews —
+documentation and scope declaration for what the running server advertises, not
+registrations (discovery against the process is authoritative, and a preview may
+not carry `requires_setting`). Tesla is the example: declarative reads beside a
+signing helper.
+
+`runtime.requires_setting` names one of this manifest's own `config` keys and
+gates the *process*: Fermix runs the local runtime only while that key reads
+`"true"`, and stops it otherwise. It is the runtime-level twin of a tool's
+`requires_setting`, and like it the key must be declared in the same manifest —
+a key nothing declares would leave a runtime nobody could ever start.
+
 ### Remote MCP plugins (`plugin_api: 3`)
 
 A `remote_mcp` plugin declares a hosted Streamable-HTTP MCP endpoint; Fermix
