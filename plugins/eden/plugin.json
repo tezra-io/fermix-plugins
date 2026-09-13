@@ -4,7 +4,7 @@
   "display_name": "Eden",
   "description": "Your Eden second brain: search, read, capture, and connect knowledge in an Eden workspace.",
   "category": "productivity",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "interface": {
     "short_description": "Use your Eden second brain from Fermix",
     "developer_name": "Fermix",
@@ -45,14 +45,11 @@
         "eden_search_workspace_items",
         "eden_find_workspace_items",
         "eden_read_board",
-        "eden_read_card",
         "eden_read_media_card",
         "eden_read_social_post",
         "eden_get_note_markdown",
-        "eden_get_item_connections",
-        "eden_get_suggested_connections",
-        "eden_search_highlights",
-        "eden_list_highlights"
+        "eden_get_connections",
+        "eden_search_highlights"
       ]
     },
     {
@@ -66,17 +63,13 @@
         "eden_search_workspace_items",
         "eden_find_workspace_items",
         "eden_read_board",
-        "eden_read_card",
         "eden_read_media_card",
         "eden_read_social_post",
         "eden_get_note_markdown",
-        "eden_get_item_connections",
-        "eden_get_suggested_connections",
+        "eden_get_connections",
         "eden_search_highlights",
-        "eden_list_highlights",
         "eden_create_note",
         "eden_append_to_note",
-        "eden_create_sticky_note",
         "eden_create_board",
         "eden_save_links_to_board",
         "eden_save_posts_to_board",
@@ -117,14 +110,14 @@
       "argument_guards": [],
       "parameters": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "properties": {},
-        "type": "object"
+        "type": "object",
+        "properties": {}
       },
       "output_schema": null,
       "upstream_annotations": {
+        "readOnlyHint": true,
         "idempotentHint": true,
-        "openWorldHint": false,
-        "readOnlyHint": true
+        "openWorldHint": false
       },
       "descriptor_sha256": "717f9fff74ee86e72fb172cffa9ad799b9ff3c4ceee1e45c91c00f9d467d4e7c"
     },
@@ -146,41 +139,41 @@
       "argument_guards": [],
       "parameters": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
         "properties": {
-          "cursor": {
-            "description": "Opaque pagination cursor. Pass the previous response's `nextCursor` verbatim to fetch the next page. Omit on the first call.",
-            "maxLength": 64,
-            "type": "string"
-          },
-          "limit": {
-            "description": "Max items per page. Defaults to 200. Server caps at 500 \u2014 never request more, the response will be silently truncated.",
-            "maximum": 500,
-            "minimum": 1,
-            "type": "integer"
-          },
-          "parentId": {
-            "description": "Restrict to items whose parent is this board id. Cheaper than listing the workspace and filtering locally. Pass the workspace id to list workspace-root children only.",
-            "maxLength": 128,
-            "type": "string"
+          "workspaceId": {
+            "description": "Workspace id from `eden_list_workspaces`. Optional when EDEN_WORKSPACE_ID is configured.",
+            "type": "string",
+            "minLength": 1
           },
           "type": {
             "description": "Optional `type` filter (e.g. `markdown`, `canvas`, `twitter`, `youtube`, `image`). Server-side, so it doesn't burn prompt tokens. Pair with pagination for tight pulls.",
-            "maxLength": 64,
-            "type": "string"
+            "type": "string",
+            "maxLength": 64
           },
-          "workspaceId": {
-            "description": "Workspace id from `eden_list_workspaces`. Optional when EDEN_WORKSPACE_ID is configured.",
-            "minLength": 1,
-            "type": "string"
+          "parentId": {
+            "description": "Restrict to items whose parent is this board id. Cheaper than listing the workspace and filtering locally. Pass the workspace id to list workspace-root children only.",
+            "type": "string",
+            "maxLength": 128
+          },
+          "limit": {
+            "description": "Max items per page. Defaults to 200. Server caps at 500 \u2014 never request more, the response will be silently truncated.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500
+          },
+          "cursor": {
+            "description": "Opaque pagination cursor. Pass the previous response's `nextCursor` verbatim to fetch the next page. Omit on the first call.",
+            "type": "string",
+            "maxLength": 64
           }
-        },
-        "type": "object"
+        }
       },
       "output_schema": null,
       "upstream_annotations": {
+        "readOnlyHint": true,
         "idempotentHint": true,
-        "openWorldHint": false,
-        "readOnlyHint": true
+        "openWorldHint": false
       },
       "descriptor_sha256": "a3138a7337379132780ae7e8e3df529e1ad76838c2c573ad7752377157272aa3"
     },
@@ -202,46 +195,46 @@
       "argument_guards": [],
       "parameters": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
         "properties": {
-          "cursor": {
-            "description": "Opaque pagination cursor from the previous response's `nextCursor`. Omit on first call.",
-            "maxLength": 64,
-            "type": "string"
-          },
-          "limit": {
-            "description": "Max results per page. Default 25, max 100.",
-            "maximum": 100,
-            "minimum": 1,
-            "type": "integer"
-          },
-          "parentId": {
-            "description": "Restrict to items whose parent board has this id.",
-            "maxLength": 128,
-            "type": "string"
+          "workspaceId": {
+            "description": "Workspace id. Optional when EDEN_WORKSPACE_ID is configured.",
+            "type": "string",
+            "minLength": 1
           },
           "q": {
             "description": "Free-text query. Case-insensitive substring match against title + URL. Omit to return everything that matches the `type` / `parentId` filters (useful for paging through all notes via `type: 'markdown'`).",
-            "maxLength": 256,
-            "type": "string"
+            "type": "string",
+            "maxLength": 256
           },
           "type": {
             "description": "Restrict to one item type (e.g. `markdown`, `canvas`, `twitter`, `youtube`, `image`).",
-            "maxLength": 64,
-            "type": "string"
+            "type": "string",
+            "maxLength": 64
           },
-          "workspaceId": {
-            "description": "Workspace id. Optional when EDEN_WORKSPACE_ID is configured.",
-            "minLength": 1,
-            "type": "string"
+          "parentId": {
+            "description": "Restrict to items whose parent board has this id.",
+            "type": "string",
+            "maxLength": 128
+          },
+          "limit": {
+            "description": "Max results per page. Default 25, max 100.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "cursor": {
+            "description": "Opaque pagination cursor from the previous response's `nextCursor`. Omit on first call.",
+            "type": "string",
+            "maxLength": 64
           }
-        },
-        "type": "object"
+        }
       },
       "output_schema": null,
       "upstream_annotations": {
+        "readOnlyHint": true,
         "idempotentHint": true,
-        "openWorldHint": false,
-        "readOnlyHint": true
+        "openWorldHint": false
       },
       "descriptor_sha256": "a6452631feefa076115fafe65413ad8ce85d3229ae7758410145500d305320c0"
     },
@@ -263,14 +256,28 @@
       "argument_guards": [],
       "parameters": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
         "properties": {
-          "category": {
-            "description": "Restrict to one AI category.",
-            "maxLength": 128,
-            "type": "string"
+          "workspaceId": {
+            "description": "Workspace id. Optional when EDEN_WORKSPACE_ID is configured.",
+            "type": "string",
+            "minLength": 1
+          },
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "description": "Natural-language description of what to find."
+          },
+          "limit": {
+            "description": "Max hits. Default 10.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 25
           },
           "kind": {
             "description": "Restrict to one item kind.",
+            "type": "string",
             "enum": [
               "documents",
               "cards",
@@ -281,23 +288,11 @@
               "audio",
               "links",
               "social"
-            ],
-            "type": "string"
-          },
-          "limit": {
-            "description": "Max hits. Default 10.",
-            "maximum": 25,
-            "minimum": 1,
-            "type": "integer"
-          },
-          "query": {
-            "description": "Natural-language description of what to find.",
-            "maxLength": 512,
-            "minLength": 1,
-            "type": "string"
+            ]
           },
           "source": {
             "description": "Restrict social items to one platform.",
+            "type": "string",
             "enum": [
               "youtube",
               "twitter",
@@ -306,34 +301,32 @@
               "linkedin",
               "threads",
               "substack"
-            ],
-            "type": "string"
+            ]
+          },
+          "category": {
+            "description": "Restrict to one AI category.",
+            "type": "string",
+            "maxLength": 128
           },
           "tags": {
             "description": "Restrict to items carrying any of these AI tags.",
-            "items": {
-              "maxLength": 64,
-              "type": "string"
-            },
             "maxItems": 8,
-            "type": "array"
-          },
-          "workspaceId": {
-            "description": "Workspace id. Optional when EDEN_WORKSPACE_ID is configured.",
-            "minLength": 1,
-            "type": "string"
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 64
+            }
           }
         },
         "required": [
           "query"
-        ],
-        "type": "object"
+        ]
       },
       "output_schema": null,
       "upstream_annotations": {
+        "readOnlyHint": true,
         "idempotentHint": true,
-        "openWorldHint": false,
-        "readOnlyHint": true
+        "openWorldHint": false
       },
       "descriptor_sha256": "69ba1daadecdd5dbda864c1967c8d018b28623fe7eac7d80ae312bd9651cc42b"
     },
@@ -349,75 +342,30 @@
       "argument_guards": [],
       "parameters": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
         "properties": {
-          "itemId": {
-            "description": "Board id from `eden_list_workspace_items` (any item with `type === \"canvas\"` or `type === \"folder\"`). Pass the workspace id itself to read the workspace root.",
-            "minLength": 1,
-            "type": "string"
-          },
           "workspaceId": {
             "description": "Workspace id. Optional when EDEN_WORKSPACE_ID is set.",
+            "type": "string",
+            "minLength": 1
+          },
+          "itemId": {
+            "type": "string",
             "minLength": 1,
-            "type": "string"
+            "description": "Board id from `eden_list_workspace_items` (any item with `type === \"canvas\"` or `type === \"folder\"`). Pass the workspace id itself to read the workspace root."
           }
         },
         "required": [
           "itemId"
-        ],
-        "type": "object"
+        ]
       },
       "output_schema": null,
       "upstream_annotations": {
+        "readOnlyHint": true,
         "idempotentHint": true,
-        "openWorldHint": false,
-        "readOnlyHint": true
+        "openWorldHint": false
       },
       "descriptor_sha256": "2e344ed342e49491f1c0609d0871157d81d1d6c599225d1155329f976478d6ce"
-    },
-    {
-      "name": "eden_read_card",
-      "description": "Read a saved card.",
-      "policy_class": "external_api",
-      "read_only": true,
-      "replay_safe": true,
-      "required_credential_scope": "read",
-      "rail": "mcp",
-      "collection_policy": null,
-      "argument_guards": [],
-      "parameters": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "properties": {
-          "attemptLiveFetch": {
-            "description": "When the cached transcript isn't available on social-server, fall back to a live vendor fetch. Defaults to true. Set false to stay within the cached subset.",
-            "type": "boolean"
-          },
-          "includeTranscript": {
-            "description": "Default true. Set false to skip the follow-up transcript fetch when going through the social-server branch (saves a round trip). Has no effect on the Loom branch.",
-            "type": "boolean"
-          },
-          "url": {
-            "description": "The url field from a link card on a board (`eden_list_workspace_items` returns this as `items[].url`).",
-            "format": "uri",
-            "type": "string"
-          },
-          "workspaceId": {
-            "description": "Workspace id from `eden_list_workspaces`. Optional when EDEN_WORKSPACE_ID is configured. Required for accurate billing of an inline vendor fetch on a cache miss (cache hits never bill).",
-            "minLength": 1,
-            "type": "string"
-          }
-        },
-        "required": [
-          "url"
-        ],
-        "type": "object"
-      },
-      "output_schema": null,
-      "upstream_annotations": {
-        "idempotentHint": true,
-        "openWorldHint": true,
-        "readOnlyHint": true
-      },
-      "descriptor_sha256": "ba2ef2b730cfde96f468bc474a4266ef86823718e47602344c1525feb2a2594a"
     },
     {
       "name": "eden_read_media_card",
@@ -431,28 +379,28 @@
       "argument_guards": [],
       "parameters": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
         "properties": {
-          "itemId": {
-            "description": "Item id from `eden_list_workspace_items`.",
-            "minLength": 1,
-            "type": "string"
-          },
           "workspaceId": {
             "description": "Workspace id. Optional when EDEN_WORKSPACE_ID is set.",
+            "type": "string",
+            "minLength": 1
+          },
+          "itemId": {
+            "type": "string",
             "minLength": 1,
-            "type": "string"
+            "description": "Item id from `eden_list_workspace_items`."
           }
         },
         "required": [
           "itemId"
-        ],
-        "type": "object"
+        ]
       },
       "output_schema": null,
       "upstream_annotations": {
+        "readOnlyHint": true,
         "idempotentHint": true,
-        "openWorldHint": false,
-        "readOnlyHint": true
+        "openWorldHint": false
       },
       "descriptor_sha256": "64bf25a8e6464e2104d885e9514df4681fe33c6f6992c77e28272cda798689ac"
     },
@@ -468,21 +416,16 @@
       "argument_guards": [],
       "parameters": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
         "properties": {
-          "attemptLiveFetch": {
-            "description": "When the cached transcript isn't available, fall back to a live vendor fetch. Defaults to true. Set false in batch sweeps where partial coverage is acceptable.",
-            "type": "boolean"
-          },
           "contentId": {
-            "description": "DB UUID returned by `eden_analyze_creator`'s `topPosts[].contentId` or `eden_search_social_content`'s `results[].contentId`. NOT the platform's native id.",
-            "minLength": 1,
-            "type": "string"
-          },
-          "includeTranscript": {
-            "description": "Default true. Set false to skip transcript fetch and save a round trip.",
-            "type": "boolean"
+            "description": "DB UUID returned by `eden_analyze_creator`'s `topPosts[].contentId` or `eden_search_social_content`'s `results[].contentId`. NOT the platform's native id. Requires `platform`; omit when passing `url`.",
+            "type": "string",
+            "minLength": 1
           },
           "platform": {
+            "description": "Required with `contentId`.",
+            "type": "string",
             "enum": [
               "twitter",
               "linkedin",
@@ -491,28 +434,35 @@
               "youtube",
               "substack",
               "threads"
-            ],
-            "type": "string"
+            ]
+          },
+          "url": {
+            "description": "A post/video URL \u2014 e.g. the `url` field of a saved link card from `eden_list_workspace_items` / `eden_search_workspace_items`, or a URL the user pasted. Omit when passing `contentId`.",
+            "type": "string",
+            "format": "uri"
+          },
+          "includeTranscript": {
+            "description": "Default true. Set false to skip transcript fetch and save a round trip.",
+            "type": "boolean"
+          },
+          "attemptLiveFetch": {
+            "description": "When the cached transcript isn't available, fall back to a live vendor fetch. Defaults to true. Set false in batch sweeps where partial coverage is acceptable.",
+            "type": "boolean"
           },
           "workspaceId": {
-            "description": "Workspace id from `eden_list_workspaces`. Optional when EDEN_WORKSPACE_ID is configured. Required for accurate billing of a live transcript fetch (cached reads never bill).",
-            "minLength": 1,
-            "type": "string"
+            "description": "Workspace id from `eden_list_workspaces`. Optional when EDEN_WORKSPACE_ID is configured. Required for accurate billing of a live fetch (cached reads never bill).",
+            "type": "string",
+            "minLength": 1
           }
-        },
-        "required": [
-          "contentId",
-          "platform"
-        ],
-        "type": "object"
+        }
       },
       "output_schema": null,
       "upstream_annotations": {
+        "readOnlyHint": true,
         "idempotentHint": true,
-        "openWorldHint": true,
-        "readOnlyHint": true
+        "openWorldHint": true
       },
-      "descriptor_sha256": "75d38b6ff8d576afd6adeea82613bebe9b14045d60cfd47a7c1c4724b6adfc94"
+      "descriptor_sha256": "ef4053409dbd0f2f43cc854402f6fd725e749f22088467e38a0e061a2a2a3c52"
     },
     {
       "name": "eden_get_note_markdown",
@@ -526,34 +476,34 @@
       "argument_guards": [],
       "parameters": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
         "properties": {
-          "itemId": {
-            "description": "Item id from `eden_list_workspace_items`.",
-            "minLength": 1,
-            "type": "string"
-          },
           "workspaceId": {
             "description": "Workspace id. Optional when EDEN_WORKSPACE_ID is set; required otherwise.",
+            "type": "string",
+            "minLength": 1
+          },
+          "itemId": {
+            "type": "string",
             "minLength": 1,
-            "type": "string"
+            "description": "Item id from `eden_list_workspace_items`."
           }
         },
         "required": [
           "itemId"
-        ],
-        "type": "object"
+        ]
       },
       "output_schema": null,
       "upstream_annotations": {
+        "readOnlyHint": true,
         "idempotentHint": true,
-        "openWorldHint": false,
-        "readOnlyHint": true
+        "openWorldHint": false
       },
       "descriptor_sha256": "381603ed423c5aa90b96d354cba9ab47f25e6d9e206f6ccf277cf5dc324343ec"
     },
     {
-      "name": "eden_get_item_connections",
-      "description": "Read an item's explicit connections.",
+      "name": "eden_get_connections",
+      "description": "Read an item's existing connections and Eden's suggested connections.",
       "policy_class": "external_api",
       "read_only": true,
       "replay_safe": true,
@@ -563,73 +513,48 @@
       "argument_guards": [],
       "parameters": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
         "properties": {
-          "itemId": {
-            "description": "Item id from `eden_search_workspace_items` / `eden_find_workspace_items` / `eden_list_workspace_items`. A board-card element id also works \u2014 it resolves to the canonical item (see `canonicalItemId` in the response).",
-            "minLength": 1,
-            "type": "string"
-          },
           "workspaceId": {
             "description": "Workspace id. Optional when EDEN_WORKSPACE_ID is configured.",
-            "minLength": 1,
-            "type": "string"
-          }
-        },
-        "required": [
-          "itemId"
-        ],
-        "type": "object"
-      },
-      "output_schema": null,
-      "upstream_annotations": {
-        "idempotentHint": true,
-        "openWorldHint": false,
-        "readOnlyHint": true
-      },
-      "descriptor_sha256": "c95ec2bde91866be60fc2f829e79fc236a9211ddd355732a2a5a2719d22d27dd"
-    },
-    {
-      "name": "eden_get_suggested_connections",
-      "description": "Read Eden's suggested connections for an item. Suggestion only.",
-      "policy_class": "external_api",
-      "read_only": true,
-      "replay_safe": true,
-      "required_credential_scope": "read",
-      "rail": "mcp",
-      "collection_policy": null,
-      "argument_guards": [],
-      "parameters": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "properties": {
-          "itemId": {
-            "description": "Item id to find relations for. A board-card element id also works \u2014 it resolves to the canonical item.",
-            "minLength": 1,
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           },
-          "limit": {
+          "itemId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Item id from `eden_search_workspace_items` / `eden_find_workspace_items` / `eden_list_workspace_items`. A board-card element id also works \u2014 it resolves to the canonical item (see `canonicalItemId` in the response)."
+          },
+          "include": {
+            "description": "Which sides to return. Default: both.",
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "existing",
+                "suggested"
+              ]
+            }
+          },
+          "suggestionLimit": {
             "description": "Max suggestions. Default 5.",
-            "maximum": 10,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
-          },
-          "workspaceId": {
-            "description": "Workspace id. Optional when EDEN_WORKSPACE_ID is configured.",
-            "minLength": 1,
-            "type": "string"
+            "maximum": 10
           }
         },
         "required": [
           "itemId"
-        ],
-        "type": "object"
+        ]
       },
       "output_schema": null,
       "upstream_annotations": {
+        "readOnlyHint": true,
         "idempotentHint": true,
-        "openWorldHint": false,
-        "readOnlyHint": true
+        "openWorldHint": false
       },
-      "descriptor_sha256": "1cdf125dfaf25185593a884bc5d478c28a113ecfd8363073a7332c69e30c89af"
+      "descriptor_sha256": "b9b60e839ba2cca67ee9f7afae6aeec0b0cac24976e5ca1c4a46438423e331d8"
     },
     {
       "name": "eden_search_highlights",
@@ -649,104 +574,54 @@
       "argument_guards": [],
       "parameters": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
         "properties": {
-          "limit": {
-            "description": "Max results. Default 10.",
-            "maximum": 50,
-            "minimum": 1,
-            "type": "integer"
-          },
-          "q": {
-            "description": "Keyword(s) to match against highlight text, notes, and book title/author.",
-            "maxLength": 256,
-            "minLength": 1,
-            "type": "string"
-          },
-          "source": {
-            "description": "Restrict the search to one source: substring-matched (case-insensitive) against book/article title and author.",
-            "maxLength": 256,
-            "minLength": 1,
-            "type": "string"
-          },
           "workspaceId": {
             "description": "Workspace id from `eden_list_workspaces`, used to resolve each highlight's Library `itemId`. Optional when EDEN_WORKSPACE_ID is configured.",
+            "type": "string",
+            "minLength": 1
+          },
+          "q": {
+            "description": "Keyword(s) to match against highlight text, notes, and book title/author. Omit to list recent highlights instead of searching.",
+            "type": "string",
             "minLength": 1,
-            "type": "string"
-          }
-        },
-        "required": [
-          "q"
-        ],
-        "type": "object"
-      },
-      "output_schema": null,
-      "upstream_annotations": {
-        "idempotentHint": true,
-        "openWorldHint": false,
-        "readOnlyHint": true
-      },
-      "descriptor_sha256": "3198b9c31af40f7b74a3b25573e3575762cdecba11cebdb69fb50ee816f9ae85"
-    },
-    {
-      "name": "eden_list_highlights",
-      "description": "List saved highlights with bounded pagination.",
-      "policy_class": "external_api",
-      "read_only": true,
-      "replay_safe": true,
-      "required_credential_scope": "read",
-      "rail": "mcp",
-      "collection_policy": {
-        "paginated": true,
-        "request_limit_pointer": "/limit",
-        "default_limit": 50,
-        "result_items_pointer": "/items",
-        "max_returned_items": 50
-      },
-      "argument_guards": [],
-      "parameters": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "properties": {
+            "maxLength": 256
+          },
+          "source": {
+            "description": "Restrict to one source: substring-matched (case-insensitive) against book/article title and author.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
           "limit": {
-            "description": "Max highlights per page. Default 20.",
-            "maximum": 200,
+            "description": "Max results. Default 10 when searching, 20 when listing (search caps at 50).",
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 200
           },
           "offset": {
-            "description": "Pagination offset. Default 0.",
-            "maximum": 9007199254740991,
+            "description": "List mode only: pagination offset. Default 0.",
+            "type": "integer",
             "minimum": 0,
-            "type": "integer"
+            "maximum": 9007199254740991
           },
           "orderBy": {
-            "description": "`recent` = most recently synced (default). `highlighted` = by the date the user highlighted it in the source.",
+            "description": "List mode only: `recent` = most recently synced (default), `highlighted` = by the date the user highlighted it in the source.",
+            "type": "string",
             "enum": [
               "recent",
               "highlighted"
-            ],
-            "type": "string"
-          },
-          "source": {
-            "description": "Restrict to one source: substring-matched (case-insensitive) against book/article title and author. Returns every highlight from the matching source(s), newest first.",
-            "maxLength": 256,
-            "minLength": 1,
-            "type": "string"
-          },
-          "workspaceId": {
-            "description": "Workspace id from `eden_list_workspaces`, used to resolve each highlight's Library `itemId`. Optional when EDEN_WORKSPACE_ID is configured.",
-            "minLength": 1,
-            "type": "string"
+            ]
           }
-        },
-        "type": "object"
+        }
       },
       "output_schema": null,
       "upstream_annotations": {
+        "readOnlyHint": true,
         "idempotentHint": true,
-        "openWorldHint": false,
-        "readOnlyHint": true
+        "openWorldHint": false
       },
-      "descriptor_sha256": "a4f43894a409848732b9658f04eda622f48732acaff2b0b70a3c44a391f9b267"
+      "descriptor_sha256": "fc74c15b06996772cb90b69f36807ca090541c0f52badddad07340638b0f9fd2"
     },
     {
       "name": "eden_create_note",
@@ -760,72 +635,86 @@
       "argument_guards": [],
       "parameters": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
         "properties": {
+          "workspaceId": {
+            "description": "Workspace id from `eden_list_workspaces`. Optional when EDEN_WORKSPACE_ID is configured.",
+            "type": "string",
+            "minLength": 1
+          },
           "boardId": {
             "description": "Compatibility alias for a board destination. Id of the destination board (item `type: \"canvas\"`, or a folder). Find it via `eden_list_workspace_items` or `eden_search_workspace_items` \u2014 when the user names a board (\"my Hooks board\"), search by title first instead of asking. The authenticated user must have write access to the board.",
-            "minLength": 1,
-            "type": "string"
-          },
-          "content": {
-            "description": "Full markdown body of the note.",
-            "maxLength": 200000,
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           },
           "destination": {
             "description": "Explicit Library or board destination. Library creates zero placements.",
             "oneOf": [
               {
+                "type": "object",
                 "properties": {
                   "kind": {
-                    "const": "library",
-                    "type": "string"
+                    "type": "string",
+                    "const": "library"
                   }
                 },
                 "required": [
                   "kind"
-                ],
-                "type": "object"
+                ]
               },
               {
+                "type": "object",
                 "properties": {
-                  "boardId": {
-                    "minLength": 1,
-                    "type": "string"
-                  },
                   "kind": {
-                    "const": "board",
-                    "type": "string"
+                    "type": "string",
+                    "const": "board"
+                  },
+                  "boardId": {
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "required": [
                   "kind",
                   "boardId"
-                ],
-                "type": "object"
+                ]
               }
             ]
           },
-          "title": {
-            "description": "Note title. Omit to derive from the first line of `content`.",
-            "maxLength": 300,
-            "type": "string"
+          "presentation": {
+            "description": "\"document\" (default) = an editable Document. \"card\" = a short canvas-visible text Card (sticky).",
+            "type": "string",
+            "enum": [
+              "document",
+              "card"
+            ]
           },
-          "workspaceId": {
-            "description": "Workspace id from `eden_list_workspaces`. Optional when EDEN_WORKSPACE_ID is configured.",
+          "title": {
+            "description": "Document title. Omit to derive from the first line of `content`. Ignored for cards.",
+            "type": "string",
+            "maxLength": 300
+          },
+          "content": {
+            "description": "Full markdown body. Required for cards; max 20K chars in card mode.",
+            "type": "string",
+            "maxLength": 200000
+          },
+          "color": {
+            "description": "Cards only: optional CSS color value, such as '#fff7a8'. Omit for Eden's default.",
+            "type": "string",
             "minLength": 1,
-            "type": "string"
+            "maxLength": 64
           }
-        },
-        "type": "object"
+        }
       },
       "output_schema": null,
       "upstream_annotations": {
+        "readOnlyHint": false,
         "destructiveHint": false,
         "idempotentHint": true,
-        "openWorldHint": false,
-        "readOnlyHint": false
+        "openWorldHint": false
       },
-      "descriptor_sha256": "ee98a2bc7a8445b8ae23d07da84cf96ca1a0bba07e894d8aaa10bd6c5806e8f3"
+      "descriptor_sha256": "86f0af00b8be2e24c997934fee7c7e40ad510f8f508a418ec19e69ea231bad93"
     },
     {
       "name": "eden_append_to_note",
@@ -839,121 +728,38 @@
       "argument_guards": [],
       "parameters": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
         "properties": {
-          "content": {
-            "description": "Markdown to append to the end of the note.",
-            "maxLength": 200000,
-            "minLength": 1,
-            "type": "string"
-          },
-          "itemId": {
-            "description": "Note item id (an item with `type: \"markdown\"`).",
-            "minLength": 1,
-            "type": "string"
-          },
           "workspaceId": {
             "description": "Workspace id from `eden_list_workspaces`. Optional when EDEN_WORKSPACE_ID is configured.",
+            "type": "string",
+            "minLength": 1
+          },
+          "itemId": {
+            "type": "string",
             "minLength": 1,
-            "type": "string"
+            "description": "Note item id (an item with `type: \"markdown\"`)."
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200000,
+            "description": "Markdown to append to the end of the note."
           }
         },
         "required": [
           "itemId",
           "content"
-        ],
-        "type": "object"
+        ]
       },
       "output_schema": null,
       "upstream_annotations": {
+        "readOnlyHint": false,
         "destructiveHint": false,
         "idempotentHint": false,
-        "openWorldHint": false,
-        "readOnlyHint": false
+        "openWorldHint": false
       },
       "descriptor_sha256": "1363070c42b8063f03da8500cf07326bd11f8aace57c3516893d7c5d78fca3ad"
-    },
-    {
-      "name": "eden_create_sticky_note",
-      "description": "Capture a short thought as a sticky note.",
-      "policy_class": "external_api",
-      "read_only": false,
-      "replay_safe": false,
-      "required_credential_scope": "write",
-      "rail": "mcp",
-      "collection_policy": null,
-      "argument_guards": [],
-      "parameters": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "properties": {
-          "boardId": {
-            "description": "Compatibility alias for a board destination. Id of the destination board (item `type: \"canvas\"`, or a folder). Find it via `eden_list_workspace_items` or `eden_search_workspace_items` \u2014 when the user names a board (\"my Hooks board\"), search by title first instead of asking. The authenticated user must have write access to the board.",
-            "minLength": 1,
-            "type": "string"
-          },
-          "color": {
-            "description": "Optional CSS color value, such as '#fff7a8'. Omit to use Eden's default Card color.",
-            "maxLength": 64,
-            "minLength": 1,
-            "type": "string"
-          },
-          "content": {
-            "description": "Text or markdown content for the Card (sticky note).",
-            "maxLength": 20000,
-            "type": "string"
-          },
-          "destination": {
-            "description": "Explicit Library or board destination. Library creates zero placements.",
-            "oneOf": [
-              {
-                "properties": {
-                  "kind": {
-                    "const": "library",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "kind"
-                ],
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "boardId": {
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "kind": {
-                    "const": "board",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "kind",
-                  "boardId"
-                ],
-                "type": "object"
-              }
-            ]
-          },
-          "workspaceId": {
-            "description": "Workspace id from `eden_list_workspaces`. Optional when EDEN_WORKSPACE_ID is configured.",
-            "minLength": 1,
-            "type": "string"
-          }
-        },
-        "required": [
-          "content"
-        ],
-        "type": "object"
-      },
-      "output_schema": null,
-      "upstream_annotations": {
-        "destructiveHint": false,
-        "idempotentHint": true,
-        "openWorldHint": false,
-        "readOnlyHint": false
-      },
-      "descriptor_sha256": "c31e921ff9333f4c47f77ab50dceb6fb42c8aaf77c450cf40a693d3c49b1b40e"
     },
     {
       "name": "eden_create_board",
@@ -967,30 +773,30 @@
       "argument_guards": [],
       "parameters": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
         "properties": {
-          "title": {
-            "description": "Board title, e.g. 'Q3 Hooks'. Defaults to 'Untitled board' if blank.",
-            "maxLength": 200,
-            "minLength": 1,
-            "type": "string"
-          },
           "workspaceId": {
             "description": "Workspace id from `eden_list_workspaces`. Optional when EDEN_WORKSPACE_ID is configured.",
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
             "minLength": 1,
-            "type": "string"
+            "maxLength": 200,
+            "description": "Board title, e.g. 'Q3 Hooks'. Defaults to 'Untitled board' if blank."
           }
         },
         "required": [
           "title"
-        ],
-        "type": "object"
+        ]
       },
       "output_schema": null,
       "upstream_annotations": {
+        "readOnlyHint": false,
         "destructiveHint": false,
         "idempotentHint": false,
-        "openWorldHint": false,
-        "readOnlyHint": false
+        "openWorldHint": false
       },
       "descriptor_sha256": "13afc0ba0fedeeedf5b9257a969b50baef6e77a3158fb653057fa8ae9c1a6376"
     },
@@ -1012,41 +818,41 @@
       ],
       "parameters": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
         "properties": {
-          "boardId": {
-            "description": "Id of the destination board (item `type: \"canvas\"`, or a folder). Find it via `eden_list_workspace_items` or `eden_search_workspace_items` \u2014 when the user names a board (\"my Hooks board\"), search by title first instead of asking. The authenticated user must have write access to the board.",
-            "minLength": 1,
-            "type": "string"
-          },
-          "urls": {
-            "description": "Absolute URLs to save (max 25 per call).",
-            "items": {
-              "maxLength": 2048,
-              "minLength": 1,
-              "type": "string"
-            },
-            "maxItems": 25,
-            "minItems": 1,
-            "type": "array"
-          },
           "workspaceId": {
             "description": "Workspace id from `eden_list_workspaces`. Optional when EDEN_WORKSPACE_ID is configured.",
+            "type": "string",
+            "minLength": 1
+          },
+          "boardId": {
+            "type": "string",
             "minLength": 1,
-            "type": "string"
+            "description": "Id of the destination board (item `type: \"canvas\"`, or a folder). Find it via `eden_list_workspace_items` or `eden_search_workspace_items` \u2014 when the user names a board (\"my Hooks board\"), search by title first instead of asking. The authenticated user must have write access to the board."
+          },
+          "urls": {
+            "minItems": 1,
+            "maxItems": 25,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "description": "Absolute URLs to save (max 25 per call)."
           }
         },
         "required": [
           "boardId",
           "urls"
-        ],
-        "type": "object"
+        ]
       },
       "output_schema": null,
       "upstream_annotations": {
+        "readOnlyHint": false,
         "destructiveHint": false,
         "idempotentHint": false,
-        "openWorldHint": false,
-        "readOnlyHint": false
+        "openWorldHint": false
       },
       "descriptor_sha256": "6a983de3d443454ee9146bb04b382dbf9361feabe1500602f94b87107aa647fb"
     },
@@ -1068,23 +874,27 @@
       ],
       "parameters": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
         "properties": {
+          "workspaceId": {
+            "description": "Workspace id from `eden_list_workspaces`. Optional when EDEN_WORKSPACE_ID is configured.",
+            "type": "string",
+            "minLength": 1
+          },
           "boardId": {
-            "description": "Id of the destination board (item `type: \"canvas\"`, or a folder). Find it via `eden_list_workspace_items` or `eden_search_workspace_items` \u2014 when the user names a board (\"my Hooks board\"), search by title first instead of asking. The authenticated user must have write access to the board.",
+            "type": "string",
             "minLength": 1,
-            "type": "string"
+            "description": "Id of the destination board (item `type: \"canvas\"`, or a folder). Find it via `eden_list_workspace_items` or `eden_search_workspace_items` \u2014 when the user names a board (\"my Hooks board\"), search by title first instead of asking. The authenticated user must have write access to the board."
           },
           "posts": {
-            "description": "Posts to save, in the order they should land on the board (max 20 per call).",
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
             "items": {
+              "type": "object",
               "properties": {
-                "contentId": {
-                  "description": "The post's Eden DB id (`contentId` in social tool results \u2014 a UUID, not the platform-native id).",
-                  "minLength": 1,
-                  "type": "string"
-                },
                 "platform": {
-                  "description": "The post's `platform` field, verbatim.",
+                  "type": "string",
                   "enum": [
                     "twitter",
                     "linkedin",
@@ -1094,37 +904,33 @@
                     "substack",
                     "threads"
                   ],
-                  "type": "string"
+                  "description": "The post's `platform` field, verbatim."
+                },
+                "contentId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The post's Eden DB id (`contentId` in social tool results \u2014 a UUID, not the platform-native id)."
                 }
               },
               "required": [
                 "platform",
                 "contentId"
-              ],
-              "type": "object"
+              ]
             },
-            "maxItems": 20,
-            "minItems": 1,
-            "type": "array"
-          },
-          "workspaceId": {
-            "description": "Workspace id from `eden_list_workspaces`. Optional when EDEN_WORKSPACE_ID is configured.",
-            "minLength": 1,
-            "type": "string"
+            "description": "Posts to save, in the order they should land on the board (max 20 per call)."
           }
         },
         "required": [
           "boardId",
           "posts"
-        ],
-        "type": "object"
+        ]
       },
       "output_schema": null,
       "upstream_annotations": {
+        "readOnlyHint": false,
         "destructiveHint": false,
         "idempotentHint": true,
-        "openWorldHint": false,
-        "readOnlyHint": false
+        "openWorldHint": false
       },
       "descriptor_sha256": "379a1a39ec44a73126c46ffb37b6e831fa05e097552741a59f71e4737329fc78"
     },
@@ -1140,40 +946,40 @@
       "argument_guards": [],
       "parameters": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
         "properties": {
-          "sourceItemIds": {
-            "description": "Item ids to connect FROM (each gets an edge to the target).",
-            "items": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "maxItems": 20,
-            "minItems": 1,
-            "type": "array"
-          },
-          "targetItemId": {
-            "description": "Item id to connect TO (e.g. the newsletter note or a board).",
-            "minLength": 1,
-            "type": "string"
-          },
           "workspaceId": {
             "description": "Workspace id from `eden_list_workspaces`. Optional when EDEN_WORKSPACE_ID is configured.",
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceItemIds": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Item ids to connect FROM (each gets an edge to the target)."
+          },
+          "targetItemId": {
+            "type": "string",
             "minLength": 1,
-            "type": "string"
+            "description": "Item id to connect TO (e.g. the newsletter note or a board)."
           }
         },
         "required": [
           "sourceItemIds",
           "targetItemId"
-        ],
-        "type": "object"
+        ]
       },
       "output_schema": null,
       "upstream_annotations": {
+        "readOnlyHint": false,
         "destructiveHint": false,
         "idempotentHint": true,
-        "openWorldHint": false,
-        "readOnlyHint": false
+        "openWorldHint": false
       },
       "descriptor_sha256": "55c6d5cb806269a4b41f070f4bfd3e601a3047ca97f410e5356cec58f10f339a"
     }
