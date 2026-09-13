@@ -10,16 +10,29 @@ name: release-plugin
 #     `<name>-<version>.tar.gz` packed from plugins/<name> (unchanged behavior).
 #   - native (native-builds/<name>.json present): the binary is cross-compiled
 #     per target in the `build` matrix and one tarball is published PER target —
-#     `<name>-<version>-<target>.tar.gz`, each carrying plugin.json +
-#     bin/<target>/<binary>. The fermix installer selects the host's artifact.
+#     `<name>-<version>-<target>.tar.gz`, each carrying the WHOLE plugin
+#     directory (manifest, skills, assets, docs, src) plus only that target's
+#     `bin/<target>/<binary>`. The fermix installer selects the host's artifact.
+#     A hybrid plugin — declarative http tools beside a local MCP helper — keeps
+#     its skill and logo in every per-target artifact this way.
+#
+# Two native toolchains, chosen by the descriptor's `toolchain` field:
+#   - `rust` (the default when the field is absent, which is the original cargo
+#     shape): `repo` + `ref` + `crate_path` name an EXTERNAL repo, checked out
+#     under `src/` and built with cargo for the target's triple.
+#   - `go`: `module_path` + `package` + `go_version` name a module in THIS
+#     repo, built at the tagged commit with CGO off. No external checkout.
 #
 # Cosign identity is preserved: `cosign sign-blob` runs in THIS workflow file
 # under the tag, so the fermix sync script's pin
 # (release-plugin.yml@refs/tags/<name>/v<version>) keeps verifying. Do NOT move
 # the signing step into a reusable/called workflow.
 #
-# `workflow_dispatch` runs meta + build only (no publish) to dry-run a native
-# cross-build before tagging.
+# `workflow_dispatch` runs meta + build only (no publish): a dry run of the
+# native cross-build before tagging. Pick the branch in the Run workflow dialog
+# and pass the plugin name; the version comes from the manifest on that branch,
+# and a `go` plugin builds from that same checkout. Use it on every branch that
+# touches a native descriptor, a go module, or this file.
 on:
   push:
     tags: ["*/v*.*.*"]
@@ -44,9 +57,13 @@ jobs:
       tarball: ${{ steps.meta.outputs.tarball }}
       native: ${{ steps.meta.outputs.native }}
       matrix: ${{ steps.meta.outputs.matrix }}
+      toolchain: ${{ steps.meta.outputs.toolchain }}
       repo: ${{ steps.meta.outputs.repo }}
       ref: ${{ steps.meta.outputs.ref }}
       crate_path: ${{ steps.meta.outputs.crate_path }}
+      module_path: ${{ steps.meta.outputs.module_path }}
+      package: ${{ steps.meta.outputs.package }}
+      go_version: ${{ steps.meta.outputs.go_version }}
       binary: ${{ steps.meta.outputs.binary }}
     steps:
       - uses: actions/checkout@v4
@@ -62,13 +79,16 @@ jobs:
           import json, os, re, sys
 
           event = os.environ["EVENT"]
-          # target -> rust triple. Runner comes from native-builds/<name>.json.
-          TRIPLES = {
-              "macos-aarch64": "aarch64-apple-darwin",
-              "macos-x86_64": "x86_64-apple-darwin",
-              "linux-x86_64": "x86_64-unknown-linux-gnu",
-              "linux-aarch64": "aarch64-unknown-linux-gnu",
+          # target -> (rust triple, GOOS, GOARCH). One table, so a target a
+          # descriptor names is either buildable by both toolchains or unknown.
+          # Runner comes from native-builds/<name>.json.
+          TARGETS = {
+              "macos-aarch64": ("aarch64-apple-darwin", "darwin", "arm64"),
+              "macos-x86_64": ("x86_64-apple-darwin", "darwin", "amd64"),
+              "linux-x86_64": ("x86_64-unknown-linux-gnu", "linux", "amd64"),
+              "linux-aarch64": ("aarch64-unknown-linux-gnu", "linux", "arm64"),
           }
+          TOOLCHAINS = ("rust", "go")
           NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
           def fail(msg):
@@ -100,16 +120,28 @@ jobs:
           descriptor_path = os.path.join("native-builds", f"{name}.json")
           native = os.path.isfile(descriptor_path)
           matrix = {"include": []}
-          repo = ref = crate_path = binary = ""
+          toolchain = repo = ref = crate_path = ""
+          module_path = package = go_version = binary = ""
           if native:
               d = json.load(open(descriptor_path))
-              repo, ref = d["repo"], d["ref"]
-              crate_path, binary = d["crate_path"], d["binary"]
+              # No `toolchain` key is the original cargo descriptor shape;
+              # absence must keep meaning rust or the sidecar stops building.
+              toolchain = d.get("toolchain", "rust")
+              if toolchain not in TOOLCHAINS:
+                  fail(f"unknown toolchain '{toolchain}' in {descriptor_path}; expected one of {', '.join(TOOLCHAINS)}")
+              binary = d["binary"]
+              if toolchain == "rust":
+                  repo, ref, crate_path = d["repo"], d["ref"], d["crate_path"]
+              else:
+                  module_path, package, go_version = d["module_path"], d["package"], d["go_version"]
               for target, runner in d["targets"].items():
-                  triple = TRIPLES.get(target)
-                  if not triple:
+                  spec = TARGETS.get(target)
+                  if not spec:
                       fail(f"unknown target '{target}' in {descriptor_path}")
-                  matrix["include"].append({"target": target, "runner": runner, "triple": triple})
+                  triple, goos, goarch = spec
+                  matrix["include"].append(
+                      {"target": target, "runner": runner, "triple": triple, "goos": goos, "goarch": goarch}
+                  )
               if not matrix["include"]:
                   fail(f"{descriptor_path} declares no targets")
 
@@ -120,9 +152,13 @@ jobs:
               "tarball": f"{name}-{version}.tar.gz",
               "native": "true" if native else "false",
               "matrix": json.dumps(matrix),
+              "toolchain": toolchain,
               "repo": repo,
               "ref": ref,
               "crate_path": crate_path,
+              "module_path": module_path,
+              "package": package,
+              "go_version": go_version,
               "binary": binary,
           }
           with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
@@ -141,19 +177,27 @@ jobs:
       matrix: ${{ fromJSON(needs.meta.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
     steps:
-      - name: Checkout native source
+      # rust: the crate lives in another repo, pinned by the descriptor's ref.
+      - name: Checkout native source (rust)
+        if: needs.meta.outputs.toolchain == 'rust'
         uses: actions/checkout@v4
         with:
           repository: ${{ needs.meta.outputs.repo }}
           ref: ${{ needs.meta.outputs.ref }}
           path: src
 
+      # go: the module lives in THIS repo, at the tagged (or dispatched) commit.
+      - name: Checkout this repo (go)
+        if: needs.meta.outputs.toolchain == 'go'
+        uses: actions/checkout@v4
+
       - uses: dtolnay/rust-toolchain@stable
+        if: needs.meta.outputs.toolchain == 'rust'
         with:
           targets: ${{ matrix.triple }}
 
-      - name: Linux build deps
-        if: startsWith(matrix.runner, 'ubuntu')
+      - name: Linux build deps (rust)
+        if: needs.meta.outputs.toolchain == 'rust' && startsWith(matrix.runner, 'ubuntu')
         run: |
           set -euo pipefail
           sudo apt-get update
@@ -163,6 +207,7 @@ jobs:
             libxcb-xfixes0-dev libx11-dev libxext-dev
 
       - name: Cargo build (release, locked)
+        if: needs.meta.outputs.toolchain == 'rust'
         env:
           MACOSX_DEPLOYMENT_TARGET: "12.3"
           CRATE_PATH: ${{ needs.meta.outputs.crate_path }}
@@ -173,7 +218,8 @@ jobs:
             --manifest-path "src/$CRATE_PATH/Cargo.toml" \
             --target "$TRIPLE"
 
-      - name: Stage binary
+      - name: Stage binary (rust)
+        if: needs.meta.outputs.toolchain == 'rust'
         env:
           CRATE_PATH: ${{ needs.meta.outputs.crate_path }}
           TRIPLE: ${{ matrix.triple }}
@@ -185,6 +231,42 @@ jobs:
           mkdir -p out
           cp "$bin" "out/$BINARY"
           chmod 0755 "out/$BINARY"
+
+      - uses: actions/setup-go@v5
+        if: needs.meta.outputs.toolchain == 'go'
+        with:
+          go-version: ${{ needs.meta.outputs.go_version }}
+          cache-dependency-path: ${{ needs.meta.outputs.module_path }}/go.sum
+
+      # Host-native vet + test before anything is cross-compiled: a helper that
+      # does not pass its own tests must never reach a signed artifact.
+      - name: Go vet + test
+        if: needs.meta.outputs.toolchain == 'go'
+        env:
+          MODULE_PATH: ${{ needs.meta.outputs.module_path }}
+        run: |
+          set -euo pipefail
+          cd "$MODULE_PATH"
+          go vet ./...
+          go test ./...
+
+      - name: Go build (static, trimmed)
+        if: needs.meta.outputs.toolchain == 'go'
+        env:
+          MODULE_PATH: ${{ needs.meta.outputs.module_path }}
+          PACKAGE: ${{ needs.meta.outputs.package }}
+          BINARY: ${{ needs.meta.outputs.binary }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/out"
+          cd "$MODULE_PATH"
+          CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" \
+            -o "$GITHUB_WORKSPACE/out/$BINARY" "$PACKAGE"
+          out="$GITHUB_WORKSPACE/out/$BINARY"
+          test -x "$out" || { echo "::error::built binary missing/not executable: $out"; exit 1; }
+          chmod 0755 "$out"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -243,6 +325,23 @@ jobs:
             local tb="$1"
             tar -tzf "$tb" > listing.txt
             python3 scripts/validate_plugin.py --archive listing.txt "$DIR"
+            # A vendored binary must be IN the archive that ships it: an artifact
+            # carrying the manifest but no bin/<target>/<command> installs
+            # cleanly and then fails at every spawn. A source checkout has no
+            # built binary, so this rule lives on the release path only.
+            python3 - "$DIR/plugin.json" listing.txt <<'PYBIN'
+          import json, sys
+
+          sys.path.insert(0, "scripts")
+          import pluginlib
+
+          manifest = json.load(open(sys.argv[1]))
+          listing = open(sys.argv[2]).read().splitlines()
+          errors = pluginlib.check_vendored_binary_listing(listing, manifest)
+          for error in errors:
+              print(f"::error::{error}")
+          sys.exit(1 if errors else 0)
+          PYBIN
             cosign sign-blob --yes \
               --output-signature "${tb}.sig" \
               --output-certificate "${tb}.pem" \
@@ -253,12 +352,16 @@ jobs:
 
           : > files.txt
           if [ "$NATIVE" = "true" ]; then
-            # One signed tarball per target: plugin.json + bin/<target>/<binary>.
+            # One signed tarball per target: the whole plugin directory (skills,
+            # assets, README, CHANGELOG, src) plus ONLY this target's bin/, so a
+            # hybrid plugin ships everything except its siblings' binaries.
             for td in "$DIR"/bin/*/; do
               target="$(basename "$td")"
               stage="stage-$target"
-              rm -rf "$stage"; mkdir -p "$stage/bin/$target"
-              cp "$DIR/plugin.json" "$stage/plugin.json"
+              rm -rf "$stage"; mkdir -p "$stage"
+              cp -R "$DIR/." "$stage/"
+              rm -rf "$stage/bin"
+              mkdir -p "$stage/bin/$target"
               cp "$td$BINARY" "$stage/bin/$target/$BINARY"
               chmod 0755 "$stage/bin/$target/$BINARY"
               tb="${NAME}-${VERSION}-${target}.tar.gz"

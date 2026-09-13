@@ -286,6 +286,45 @@ def check_archive_listing(listing_lines, has_runtime: bool, remote: bool = False
     return errors
 
 
+def check_vendored_binary_listing(listing_lines, manifest):
+    """Release-archive rule: a vendored binary must be IN the archive shipping it.
+
+    `vendored: true` on a `binary` runtime means the runtime's `command`
+    resolves under the artifact's own `bin/<target>/` — nowhere else on the
+    host. An archive packed without it installs cleanly and then fails at every
+    spawn, so the release path checks the packed listing before signing.
+
+    Deliberately NOT part of ``check_archive_listing``: that entry point is
+    shared with ``check_plugin_package.py``, which packs the SOURCE tree, where
+    the binary has not been cross-compiled yet. A source checkout is not a
+    release archive and must keep validating without one.
+    """
+    runtime = manifest.get("runtime")
+    if not isinstance(runtime, dict) or runtime.get("kind") != "binary":
+        return []
+    if runtime.get("vendored") is not True:
+        return []
+    command = runtime.get("command")
+    if not isinstance(command, str) or not command:
+        return []  # malformed command already reported by _validate_runtime
+    targets = {}
+    for raw in listing_lines:
+        parts = raw.strip().lstrip("./").split("/")
+        if len(parts) < 3 or parts[0] != "bin" or not parts[1]:
+            continue
+        targets.setdefault(parts[1], set()).add("/".join(parts[2:]))
+    if not targets:
+        return [
+            f"vendored runtime command {command!r}: the release archive carries no "
+            "bin/<target>/ directory"
+        ]
+    return [
+        f"vendored runtime command {command!r}: bin/{target}/ does not contain it"
+        for target in sorted(targets)
+        if command not in targets[target]
+    ]
+
+
 def _check_remote_data_only(plugin_dir: Path):
     """Filesystem half of the remote data-only rule: no ecosystem file anywhere
     and no executable file anywhere (the mode bit, not just the name)."""
@@ -537,7 +576,7 @@ def _validate_tool(tool, plugin_name, auth, seen, config_keys):
         errors.append(f"{label}: rail must be one of {sorted(RAILS)}")
     if rail == "http":
         errors += _validate_http_tool(tool, label)
-    errors += _validate_requires_setting(tool.get("requires_setting"), label, config_keys)
+    errors += _validate_requires_setting(tool.get("requires_setting"), label, config_keys, rail)
     if auth.get("type") == "oauth2":
         declared = auth.get("scopes") or []
         scopes = tool.get("requires_scopes")
@@ -552,12 +591,24 @@ def _validate_tool(tool, plugin_name, auth, seen, config_keys):
     return errors
 
 
-def _validate_requires_setting(setting, label, config_keys):
+def _validate_requires_setting(setting, label, config_keys, rail):
     """A tool may gate on exactly ONE operator setting, named by a config key
     the same manifest declares. A misspelled key would leave the tool gated on
-    a setting nobody can ever set, with nothing at install time to say so."""
+    a setting nobody can ever set, with nothing at install time to say so.
+
+    An `mcp`-rail entry may not carry the gate at all: it is a preview, MCP
+    discovery against the running server is what registers, and the gate
+    governs what `Plugins.Capabilities` advertises. Core refuses it at install
+    (`:requires_setting_on_mcp_tool`), so accepting it here would publish a
+    manifest that cannot install. Gate the runtime instead.
+    """
     if setting is None:
         return []
+    if rail == "mcp":
+        return [
+            f"{label}: requires_setting is not allowed on an mcp-rail tool "
+            "(mcp entries are previews and never register; gate runtime.requires_setting instead)"
+        ]
     if not isinstance(setting, str) or not setting.strip():
         return [f"{label}: requires_setting must be a single config key string"]
     if setting not in config_keys:
@@ -662,6 +713,9 @@ def _validate_runtime(manifest):
         errors.append("runtime.args must be a list of non-empty strings")
     if not isinstance(runtime.get("vendored"), bool):
         errors.append("runtime.vendored must be a boolean")
+    errors += _validate_runtime_requires_setting(
+        runtime.get("requires_setting"), _declared_config_keys(manifest)
+    )
     if "tool_name_mode" in runtime and runtime["tool_name_mode"] != "prefix":
         # `preserve` is admissible only for a plugin-api-3 remote plugin
         # (M27 §7.2 rule 9); a local MCP server's tools are always prefixed.
@@ -670,6 +724,25 @@ def _validate_runtime(manifest):
             f"('preserve' is {REMOTE_RUNTIME_KIND} only)"
         )
     return errors
+
+
+def _validate_runtime_requires_setting(setting, config_keys):
+    """A local runtime may be gated on exactly ONE operator setting, named by a
+    config key the same manifest declares (M40 §3.2): Fermix runs the host
+    process only while that key reads "true". A key the manifest does not
+    declare would leave a runtime nobody could ever start — the same
+    unsatisfiable gate a tool's `requires_setting` is checked for.
+
+    A `remote_mcp` runtime spawns nothing, so the key is refused there by the
+    remote block's own field allowlist rather than accepted and ignored.
+    """
+    if setting is None:
+        return []
+    if not isinstance(setting, str) or not setting.strip():
+        return ["runtime.requires_setting must be a single config key string"]
+    if setting not in config_keys:
+        return [f"runtime.requires_setting names an undeclared config key {setting}"]
+    return []
 
 
 def _validate_remote_runtime(manifest, runtime, needs_runtime):

@@ -1,6 +1,6 @@
 ---
 name: tesla-plugin
-description: Use for ANY question about the user's car, vehicle, or Tesla — charge level, range, climate, location, alerts, service, software, nearby chargers, charging history, warranty. Uses the Fermix Tesla plugin, never the browser.
+description: Use for ANY question about or instruction for the user's car, vehicle, or Tesla — charge level, range, climate, location, alerts, service, software, nearby chargers, charging history, warranty, and commands such as starting or stopping charging, setting the charge limit, climate and cabin temperature, locking and unlocking, Sentry Mode, and sending a destination. Uses the Fermix Tesla plugin, never the browser.
 ---
 
 # Tesla
@@ -49,8 +49,32 @@ A `408`, "vehicle unavailable", or a timeout on a live read means the car is asl
 
 - Report the last cloud state instead: "it's asleep; Tesla last saw it at <time>".
 - **Never wake a car to answer a read.** Sleep is how the battery lasts.
-- If `tesla_wake_vehicle` is listed, offer it ("I can wake it, which Tesla bills; want me to?") and call it only after the user says yes. If it is not listed, the owner has not enabled waking; say so rather than retrying.
+- If `tesla_wake_vehicle` is listed, offer it ("I can wake it, which Tesla bills; want me to?") and call it only after the user says yes. If it is not listed, the owner has not turned commands on; say so rather than retrying.
 - After a wake, re-check `tesla_get_vehicle_status` until it reads `online`, then do the live read once. Waking takes a few seconds and can fail.
+
+## Commands
+
+This section applies only when `tesla_*` command tools are listed. If they are not, the owner has not turned commands on: say so, and do not describe the Tesla app's steps as a workaround.
+
+Every command moves a real car that someone may be standing next to.
+
+- **Confirm every single command before sending it.** State the exact action and the car it goes to — "start charging on the Model 3, VIN 5YJ…1234?" — and wait for a clear yes. A yes to one command is not a yes to the next one: never chain commands off a single confirmation, and ask again even when the user's request implies several.
+- If the car is asleep, offer `tesla_wake_vehicle` first and get its own yes. It is under the same switch as the commands, so if commands are listed, waking is available.
+- Send one command, report what came back, then stop. Do not follow a command with a read the user did not ask for.
+
+### Reading the result
+
+- A result with `result: false` is **the car refusing**, not a failure to reach it. Report the `reason` the car gave in plain words ("it says the charge port is closed") and **never retry** — the answer will not change until the condition does.
+- An error saying the car did not confirm the command means the outcome is **unknown**: it may have applied. Do not resend. Read the relevant state first (`tesla_get_vehicle_data` with the section that would have changed, or `tesla_get_vehicle_status` if the car may have dropped offline) and tell the user what you actually find.
+- A `403` on a command usually means the virtual key is not paired with this car. `tesla_get_fleet_status` shows the pairing; pairing is the owner's job, done once per car from the Tesla app.
+
+### Access changes
+
+`tesla_unlock_doors` and turning Sentry Mode off with `tesla_set_sentry_mode` change who can get into the car. Do not fold them into a larger request. Name the change on its own — "this unlocks the car and leaves it unlocked" — and get a yes for that specific thing.
+
+### Never offer these
+
+PIN to Drive, valet mode, speed limits, and parental controls are not available through this plugin at all. Say so; do not approximate them with another command.
 
 ## Cost
 
@@ -60,6 +84,7 @@ Every call is metered on the owner's Tesla developer account, and live reads of 
 - Never loop or poll. Do not "refresh" a value the user did not ask to refresh.
 - `tesla_get_vehicle_location` and `tesla_get_nearby_charging_sites` are billed live reads too.
 - Cloud reads and charging history answer while the car sleeps and disturb nothing; a wake costs about ten times a read, which is why it needs a yes.
+- Commands are billed too, at their own rate. That is a reason to send exactly the one the user asked for, never a reason to skip the confirmation.
 
 ## Units and freshness
 
@@ -86,4 +111,4 @@ Every call is metered on the owner's Tesla developer account, and live reads of 
 
 ## Not supported (don't claim these)
 
-Starting or stopping charging, setting the charge limit or amps, climate and preconditioning control, locks, horn, lights, windows, trunks, sentry mode, navigation, valet, software updates, energy products (Powerwall, solar, Wall Connector), and telemetry history. Reads and an optional wake are the whole surface. If the user asks for one of these, say it is not available yet rather than describing how the Tesla app does it.
+Changing scheduled charging or preconditioning (the schedules can be read, not set), media and volume, trunk and frunk, windows, seat and steering-wheel heaters, HomeLink, software updates, PIN to Drive, valet mode, speed limits, parental controls, energy products (Powerwall, solar, Wall Connector), and telemetry history. If the user asks for one of these, say it is not available rather than describing how the Tesla app does it.
