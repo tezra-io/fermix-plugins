@@ -29,8 +29,9 @@
   "config": [
     {
       "key": "ALLOW_WAKE",
-      "prompt": "Allow waking vehicles: set to true to enable tesla_wake_vehicle (each wake is billed)",
-      "required": false
+      "prompt": "Allow waking vehicles (each wake is billed)",
+      "required": false,
+      "kind": "boolean"
     }
   ],
   "tools": [

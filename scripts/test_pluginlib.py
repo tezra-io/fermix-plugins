@@ -427,6 +427,46 @@ class RequiresSetting(Assertions):
             self.assert_error(self._errors(value), "requires_setting must be a single config key string")
 
 
+# --- 1d. config entry kind: text by default, boolean opt-in ------------------
+
+
+class ConfigKind(Assertions):
+    """A config entry declares how the operator answers it: free text (the
+    default when absent) or a boolean switch. Any other spelling is refused
+    here, so an unknown widget name can never reach core as a setting nobody
+    can answer."""
+
+    def _entry(self, **overrides):
+        entry = {"key": "ALLOW_WAKE", "prompt": "Allow waking vehicles", "required": False}
+        entry.update(overrides)
+        return entry
+
+    def _errors(self, **overrides):
+        return pluginlib._validate_config(api2_manifest(config=[self._entry(**overrides)]))
+
+    def test_absent_kind_is_accepted(self):
+        self.assert_clean(self._errors())
+
+    def test_text_kind_is_accepted(self):
+        self.assert_clean(self._errors(kind="text"))
+
+    def test_boolean_kind_is_accepted(self):
+        self.assert_clean(self._errors(kind="boolean"))
+
+    def test_unknown_kind_is_refused(self):
+        self.assert_error(
+            self._errors(kind="switch"),
+            "config.ALLOW_WAKE: kind must be one of ['boolean', 'text']",
+        )
+
+    def test_non_string_kind_is_refused(self):
+        for value in (True, 1, None, ["boolean"], {"kind": "boolean"}):
+            self.assert_error(
+                self._errors(kind=value),
+                "config.ALLOW_WAKE: kind must be one of ['boolean', 'text']",
+            )
+
+
 # --- 2/3. plugin-api gating: api 2 must reject every api-3-only field ---------
 
 

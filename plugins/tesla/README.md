@@ -104,9 +104,11 @@ region.
 
 ## Wake and cost
 
-Waking is off until you turn it on. Set the plugin's `ALLOW_WAKE` setting to
-exactly `true` and `tesla_wake_vehicle` is advertised to the agent; leave it
-unset and the tool does not exist, so the agent can offer to wake nothing.
+Waking is off until you turn it on. Turn on the plugin's **Allow waking
+vehicles** switch and `tesla_wake_vehicle` is advertised to the agent; leave it
+off and the tool does not exist, so the agent can offer to wake nothing. In
+`config.toml` that switch is `ALLOW_WAKE = "true"` under
+`[fermix_core.plugins.tesla]`.
 Sleep is how a parked Tesla keeps its charge, and every wake is billed.
 
 Tesla meters Fleet API usage: per data request, per command, and per wake, with

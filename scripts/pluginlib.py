@@ -1229,12 +1229,18 @@ def _resolve_schema_pointer(schema, tokens):
     return node
 
 
-CONFIG_ENTRY_FIELDS = {"key", "prompt", "required"}
+CONFIG_ENTRY_FIELDS = {"key", "prompt", "required", "kind"}
+# How the operator answers a setting. Absent means "text" — every manifest
+# published before the field existed keeps its meaning. A boolean setting is
+# persisted as the string "true" or "false", and a tool's `requires_setting`
+# gate is satisfied only by "true".
+CONFIG_KINDS = {"text", "boolean"}
 
 
 def _validate_config(manifest):
     """Per-plugin config declarations (M8.1 §4.4) — mirrors the core decoder:
-    flat key/prompt/required entries, UPPER_SNAKE keys, nothing more."""
+    flat key/prompt/required entries with an optional kind, UPPER_SNAKE keys,
+    nothing more."""
     config = manifest.get("config")
     if config is None:
         return []
@@ -1268,6 +1274,9 @@ def _validate_config_entry(entry, seen):
         errors.append(f"{label}: config prompt must be a non-empty string")
     if not isinstance(entry.get("required", False), bool):
         errors.append(f"{label}: config required must be a boolean")
+    kind = entry.get("kind", "text")
+    if not isinstance(kind, str) or kind not in CONFIG_KINDS:
+        errors.append(f"config.{label}: kind must be one of {sorted(CONFIG_KINDS)}")
     return errors
 
 
