@@ -1,6 +1,6 @@
 ---
 name: tesla-plugin
-description: Use for ANY question about or instruction for the user's car, vehicle, or Tesla — charge level, range, climate, location, alerts, service, software, nearby chargers, charging history, warranty, and commands such as starting or stopping charging, setting the charge limit, climate and cabin temperature, locking and unlocking, Sentry Mode, and sending a destination. Uses the Fermix Tesla plugin, never the browser.
+description: Use for ANY question or instruction about the user's car, vehicle, or Tesla: charge, range, climate, location, alerts, service, software, chargers, charging history, warranty, and commands (charging, climate, locks, Sentry, lights, navigation). Uses the Fermix Tesla plugin, never the browser.
 ---
 
 # Tesla
