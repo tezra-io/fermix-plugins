@@ -55,7 +55,7 @@ one correction.
 
 ## Tools
 
-Fifteen commands, each taking a 17-character `vin`:
+Twenty-three commands, each taking a 17-character `vin`:
 
 | Tool | Extra arguments | Vehicle subsystem |
 | --- | --- | --- |
@@ -74,9 +74,35 @@ Fifteen commands, each taking a 17-character `vin`:
 | `set_sentry_mode` | `enabled` | infotainment |
 | `flash_lights` | — | infotainment |
 | `honk_horn` | — | infotainment |
+| `set_seat_heater` | `seat`, `level` 0–3 | infotainment |
+| `set_seat_cooler` | `seat` (front only), `level` 0–3 | infotainment |
+| `set_auto_seat_climate` | `seat` (front only), `enabled` | infotainment |
+| `set_steering_wheel_heater` | `enabled` | infotainment |
+| `actuate_trunk` | `which` front or rear | VCSEC |
+| `vent_windows` | — | infotainment |
+| `close_windows` | — | infotainment |
+| `set_vehicle_name` | `name`, 1–32 characters | infotainment |
 
 Each call opens a session on **only** the subsystem its command terminates on,
-so a lock never wakes infotainment.
+so a lock never wakes infotainment. The trunk is a closure action, which the
+SDK sends to the security controller rather than to infotainment; the windows
+are not.
+
+`seat` is one of `front_left`, `front_right`, `rear_left`, `rear_center`,
+`rear_right`, `rear_left_back`, `rear_right_back`, `third_row_left`,
+`third_row_right` — the nine positions `SetSeatHeater` can address. Seat
+cooling and automatic seat climate take **only the front two**: the SDK's
+`AutoSeatAndClimate` drops any other position from the request and its
+protobuf has no rear value at all, so advertising a rear seat there would be
+advertising a command that does nothing. `level` is the SDK's own scale: 0
+off, 1 low, 2 medium, 3 high.
+
+Seat heating, seat cooling and steering wheel heating need the car's climate
+control to be on. When it is not, the car authenticates the command and
+declines it, which comes back as `result: false` with the car's own reason —
+the same as any other refusal. `actuate_trunk` with `front` opens the frunk
+and cannot close it; with `rear` it moves the rear trunk, which opens a closed
+one and closes an open one on cars with a powered rear trunk.
 
 `navigate_to` is deliberately absent. The SDK has no typed navigation method,
 and its command proxy maps `navigation_request` to `ErrCommandUseRESTAPI`

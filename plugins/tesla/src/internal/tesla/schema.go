@@ -72,3 +72,30 @@ func numberSchema(low, high float64, description string) *jsonschema.Schema {
 func booleanSchema(description string) *jsonschema.Schema {
 	return &jsonschema.Schema{Type: "boolean", Description: description}
 }
+
+// stringSchema bounds a free-text argument by length in characters. What the
+// validator additionally refuses — control characters — has no JSON Schema
+// spelling that a model reliably reads, so the description carries it.
+func stringSchema(low, high int, description string) *jsonschema.Schema {
+	minLength, maxLength := low, high
+	return &jsonschema.Schema{
+		Type:        "string",
+		Description: description,
+		MinLength:   &minLength,
+		MaxLength:   &maxLength,
+	}
+}
+
+// enumSchema advertises the exact set of values the validator accepts, in the
+// order the table declares them.
+func enumSchema(values []string, description string) *jsonschema.Schema {
+	enum := make([]any, 0, len(values))
+	for _, value := range values {
+		enum = append(enum, value)
+	}
+	return &jsonschema.Schema{
+		Type:        "string",
+		Description: description,
+		Enum:        enum,
+	}
+}

@@ -23,6 +23,9 @@ const (
 	SentenceUnexpectedArgFmt = "This command does not take %s."
 	SentenceIntRangeFmt      = "%s must be a whole number between %d and %d."
 	SentenceCelsiusRangeFmt  = "%s must be between %g and %g degrees Celsius."
+	SentenceEnumFmt          = "%s must be one of: %s."
+	SentenceTextLengthFmt    = "%s must be between %d and %d characters."
+	SentenceTextControlFmt   = "%s must not contain control characters."
 	SentenceArguments        = "This command's arguments were not understood; check the tool's schema and send them again."
 )
 
