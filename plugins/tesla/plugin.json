@@ -4,7 +4,7 @@
   "display_name": "Tesla",
   "description": "Check your Tesla's charge, climate, location, alerts and history, and control charging, climate and locks.",
   "category": "productivity",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "default_enabled": false,
   "interface": {
     "short_description": "See your Tesla's state, and control it when you allow commands",
@@ -801,6 +801,123 @@
       }
     },
     {
+      "name": "tesla_send_navigation",
+      "description": "Send a full street address to the car's nav. Args: vin, destination, locale, timestamp_ms.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "requires_setting": "ALLOW_COMMANDS",
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "destination": {
+            "type": "string",
+            "minLength": 1,
+            "description": "A full street address with city and region; the place name may lead it, e.g. Blue Bottle Coffee, 300 Webster St, Oakland, CA 94607. A Google Maps share link works only when the user pasted it. Never a bare place name or a link you composed: the car cannot resolve them and still reports success."
+          },
+          "locale": {
+            "type": "string",
+            "default": "en-US",
+            "description": "Locale the car reads the destination in, e.g. en-US or de-DE."
+          },
+          "timestamp_ms": {
+            "type": "string",
+            "description": "The current time in epoch milliseconds, as a string, e.g. 1789459200000. Supply the time of the call."
+          }
+        },
+        "required": [
+          "vin",
+          "destination",
+          "timestamp_ms"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/vehicles/{vin}/command/navigation_request",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/vehicles/{vin}/command/navigation_request"
+        },
+        "body": {
+          "type": "share_ext_content_raw",
+          "value": {
+            "android.intent.extra.TEXT": "{destination}"
+          },
+          "locale": "{locale}",
+          "timestamp_ms": "{timestamp_ms}"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response",
+          "fields": [
+            "result",
+            "reason"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tesla_navigate_waypoints",
+      "description": "Send a route of Google Maps place IDs to the car. Args: vin, waypoints.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "requires_setting": "ALLOW_COMMANDS",
+      "rail": "http",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "waypoints": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The stops in order, comma-separated, each written refId:<Google Maps place ID>, e.g. refId:ChIJ...,refId:ChIJ.... The user supplies the place IDs."
+          }
+        },
+        "required": [
+          "vin",
+          "waypoints"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "regional_urls": {
+          "na": "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/vehicles/{vin}/command/navigation_waypoints_request",
+          "eu": "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/vehicles/{vin}/command/navigation_waypoints_request"
+        },
+        "body": {
+          "waypoints": "{waypoints}"
+        },
+        "success": [
+          200
+        ],
+        "extract": {
+          "path": "response",
+          "fields": [
+            "result",
+            "reason"
+          ]
+        }
+      }
+    },
+    {
       "name": "tesla_start_charging",
       "description": "Start charging (car must be plugged in). Args: vin.",
       "policy_class": "external_api",
@@ -1079,6 +1196,160 @@
       }
     },
     {
+      "name": "tesla_set_seat_heater",
+      "description": "Set one seat's heater, 0-3; climate must be on. Args: vin, seat, level.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "seat": {
+            "type": "string",
+            "enum": [
+              "front_left",
+              "front_right",
+              "rear_left",
+              "rear_center",
+              "rear_right",
+              "rear_left_back",
+              "rear_right_back",
+              "third_row_left",
+              "third_row_right"
+            ],
+            "description": "Which seat to heat. rear_left_back and rear_right_back are the rear seat backs; the third-row seats exist only on cars that have a third row."
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3,
+            "description": "Heat level: 0 off, 1 low, 2 medium, 3 high."
+          }
+        },
+        "required": [
+          "vin",
+          "seat",
+          "level"
+        ]
+      }
+    },
+    {
+      "name": "tesla_set_seat_cooler",
+      "description": "Set one front seat's cooler, 0-3; climate must be on. Args: vin, seat, level.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "seat": {
+            "type": "string",
+            "enum": [
+              "front_left",
+              "front_right"
+            ],
+            "description": "Which seat to cool. Only the two front seats are cooled."
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3,
+            "description": "Cooling level: 0 off, 1 low, 2 medium, 3 high."
+          }
+        },
+        "required": [
+          "vin",
+          "seat",
+          "level"
+        ]
+      }
+    },
+    {
+      "name": "tesla_set_auto_seat_climate",
+      "description": "Turn one seat's automatic climate on or off. Args: vin, seat, enabled (bool).",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "seat": {
+            "type": "string",
+            "enum": [
+              "front_left",
+              "front_right"
+            ],
+            "description": "Which front seat's automatic climate to change. Tesla offers it on the front seats only."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "true lets the car manage that seat's heating and cooling, false leaves it on its set level."
+          }
+        },
+        "required": [
+          "vin",
+          "seat",
+          "enabled"
+        ]
+      }
+    },
+    {
+      "name": "tesla_set_steering_wheel_heater",
+      "description": "Turn the steering wheel heater on or off; climate must be on. Args: vin, enabled.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "true turns the steering wheel heater on, false turns it off."
+          }
+        },
+        "required": [
+          "vin",
+          "enabled"
+        ]
+      }
+    },
+    {
       "name": "tesla_lock_doors",
       "description": "Lock the doors. Args: vin.",
       "policy_class": "external_api",
@@ -1105,6 +1376,87 @@
     {
       "name": "tesla_unlock_doors",
       "description": "Unlock the doors; the car stays unlocked. Args: vin.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      }
+    },
+    {
+      "name": "tesla_actuate_trunk",
+      "description": "Open the front trunk, or open or close the rear. Args: vin, which (front, rear).",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "which": {
+            "type": "string",
+            "enum": [
+              "front",
+              "rear"
+            ],
+            "description": "front opens the front trunk and never closes it; rear toggles: it opens a closed trunk and closes an open powered one."
+          }
+        },
+        "required": [
+          "vin",
+          "which"
+        ]
+      }
+    },
+    {
+      "name": "tesla_vent_windows",
+      "description": "Vent the windows, leaving them ajar. Args: vin.",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          }
+        },
+        "required": [
+          "vin"
+        ]
+      }
+    },
+    {
+      "name": "tesla_close_windows",
+      "description": "Close the windows. Args: vin.",
       "policy_class": "external_api",
       "read_only": false,
       "requires_scopes": [
@@ -1200,6 +1552,37 @@
         },
         "required": [
           "vin"
+        ]
+      }
+    },
+    {
+      "name": "tesla_set_vehicle_name",
+      "description": "Rename the car as it shows in the app. Args: vin, name (1-32 characters).",
+      "policy_class": "external_api",
+      "read_only": false,
+      "requires_scopes": [
+        "vehicle_cmds"
+      ],
+      "rail": "mcp",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "description": "17-character VIN from tesla_list_vehicles."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32,
+            "description": "The car's new display name, 1-32 characters."
+          }
+        },
+        "required": [
+          "vin",
+          "name"
         ]
       }
     }

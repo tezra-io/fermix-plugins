@@ -3,7 +3,8 @@
 Read your Tesla from Fermix: charge and range, climate, location, alerts,
 service and software, nearby chargers, charging history, warranty — and, if you
 allow it, control it: start and stop charging, set the charge limit, run
-climate, lock and unlock, arm Sentry Mode, send a destination, wake it up.
+climate, warm the seats, lock and unlock, open the trunk, vent the windows, arm
+Sentry Mode, send a destination, wake it up.
 
 The reads are declarative `http`-rail tools Fermix calls itself. The commands
 go through `fermix-tesla`, a small helper built from `src/` in this repo and
@@ -182,12 +183,22 @@ command fails and a read succeeds.
 | `tesla_stop_climate` | Turn climate off |
 | `tesla_set_cabin_temperature` | Set driver (and optionally passenger) temperature, 15-28 °C |
 | `tesla_set_preconditioning_max` | Turn max defrost on or off |
+| `tesla_set_seat_heater` | Set one seat's heater, 0-3 (climate must be on) |
+| `tesla_set_seat_cooler` | Set a front seat's cooler, 0-3 (climate must be on) |
+| `tesla_set_auto_seat_climate` | Turn a front seat's automatic climate on or off |
+| `tesla_set_steering_wheel_heater` | Turn the steering wheel heater on or off (climate must be on) |
 | `tesla_lock_doors` | Lock the doors |
 | `tesla_unlock_doors` | Unlock the doors |
+| `tesla_actuate_trunk` | Open the front trunk, or open or close the rear |
+| `tesla_vent_windows` | Vent the windows |
+| `tesla_close_windows` | Close the windows |
 | `tesla_set_sentry_mode` | Arm or disarm Sentry Mode |
 | `tesla_flash_lights` | Flash the headlights once |
 | `tesla_honk_horn` | Honk the horn once |
-| `tesla_navigate_to` | Send a destination to the car's navigation |
+| `tesla_set_vehicle_name` | Rename the car as it shows in the app |
+| `tesla_navigate_to` | Send a destination by coordinates |
+| `tesla_send_navigation` | Send a full street address (a bare place name does not resolve) |
+| `tesla_navigate_waypoints` | Send a route of Google Maps place IDs |
 | `tesla_wake_vehicle` | Wake a sleeping car |
 
 Every one takes the VIN. The skill makes the agent name the action and the car
@@ -207,8 +218,9 @@ time it is sent, including one sent twice because the first looked unconfirmed
 
 ### How it runs
 
-`tesla_navigate_to` is a plain Fleet API call, because Tesla's own SDK routes
-that one over REST rather than the signed protocol. Every other command goes
+The three navigation tools (`tesla_navigate_to`, `tesla_send_navigation` and
+`tesla_navigate_waypoints`) are plain Fleet API calls, because Tesla's own SDK
+routes those over REST rather than the signed protocol. Every other command goes
 through `fermix-tesla`, a helper Fermix runs on this machine as a local MCP
 server and stops again the moment the switch goes off. It is built from `src/`
 in this repo, cross-compiled by the release workflow and shipped **inside** the
@@ -292,6 +304,8 @@ free.
 | `tesla_get_warranty` | `GET /dx/warranty/details?vin={vin}` | `vehicle_device_data` | Account read |
 | `tesla_wake_vehicle` | `POST /vehicles/{vin}/wake_up` | `vehicle_device_data`, `vehicle_cmds` | Wakes the car, at the wake rate; gated on `ALLOW_COMMANDS` |
 | `tesla_navigate_to` | `POST /vehicles/{vin}/command/navigation_gps_request` | `vehicle_cmds` | Command rate; gated on `ALLOW_COMMANDS` |
+| `tesla_send_navigation` | `POST /vehicles/{vin}/command/navigation_request` | `vehicle_cmds` | Command rate; gated on `ALLOW_COMMANDS` |
+| `tesla_navigate_waypoints` | `POST /vehicles/{vin}/command/navigation_waypoints_request` | `vehicle_cmds` | Command rate; gated on `ALLOW_COMMANDS` |
 
 The other command tools have no row here: they are not REST calls. They are
 signed end to end and delivered to the car by `fermix-tesla`, so there is no
@@ -311,10 +325,11 @@ URL to quote.
 - Everything else is vehicle condition, not movement.
 
 Not included: setting charge or preconditioning schedules (they can be read,
-not written), media and volume, trunk and frunk, windows, seat and
-steering-wheel heaters, HomeLink, software updates, PIN to Drive, valet mode,
-speed limits and parental controls, energy products (Powerwall, solar, Wall
-Connector), Fleet Telemetry streaming and its history, and charging invoice
-downloads. The `tesla-plugin` skill teaches the agent the VIN workflow, which
-section answers which question, the asleep-car rules, the rule that every
-command is confirmed on its own, and the cost guardrails.
+not written), the sunroof, the steering-wheel heater's level and its automatic
+mode (on and off are covered), upcoming calendar entries, media and volume,
+HomeLink, software updates, PIN to Drive, valet mode, speed limits and parental
+controls, energy products (Powerwall, solar, Wall Connector), Fleet Telemetry
+streaming and its history, and charging invoice downloads. The `tesla-plugin`
+skill teaches the agent the VIN workflow, which section answers which
+question, the asleep-car rules, the rule that every command is confirmed on
+its own, and the cost guardrails.

@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.1.0
+
+- Comfort commands through the helper: `tesla_set_seat_heater` and
+  `tesla_set_seat_cooler` set one seat to 0 (off), 1 (low), 2 (medium) or
+  3 (high) — nine seat positions for heat, the two front seats for cooling —
+  `tesla_set_auto_seat_climate` hands a front seat back to the car, and
+  `tesla_set_steering_wheel_heater` turns the wheel heater on or off. The car
+  refuses all four while climate is off, so the skill turns climate on first.
+- Closures through the helper: `tesla_actuate_trunk` opens the front trunk or
+  toggles the rear one (open if closed, closed if open and powered), and
+  `tesla_vent_windows` and `tesla_close_windows` move the windows. These move
+  parts of the car, so the skill names what will move before it sends them.
+- `tesla_set_vehicle_name` renames the car as it appears in the Tesla app. It
+  is a rename, not a control: nothing on the car moves.
+- Two more navigation tools on the http rail, beside `tesla_navigate_to`,
+  because Tesla's SDK routes all three over REST rather than the signed
+  protocol: `tesla_send_navigation` sends a full street address
+  (`navigation_request`, with the `locale` and `timestamp_ms` Tesla's own
+  client sends; the car does not resolve a bare place name, so the skill looks
+  the address up first), and `tesla_navigate_waypoints` sends a route of Google Maps
+  place IDs (`navigation_waypoints_request`).
+- Still not included, and why: navigating to a Supercharger by id
+  (`navigation_sc_request`), because `tesla_get_nearby_charging_sites` returns
+  no site id to pass it, and upcoming calendar entries, whose payload Tesla
+  does not document. Also unchanged: the sunroof, the steering-wheel heater's
+  level and its automatic mode, schedules, media, HomeLink, software updates,
+  PIN to Drive, valet, speed limits, parental controls, energy products and
+  telemetry.
+- The eight helper commands sit behind the same `ALLOW_COMMANDS` switch and the
+  same signing key as every other command; the two navigation tools are gated
+  on the switch as well. Nothing new is asked of the operator.
+
 ## 1.0.1
 
 - The mark is Tesla's own: `assets/logo.png` is the 196 pixel favicon
