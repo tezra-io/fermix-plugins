@@ -113,6 +113,72 @@ func TestServerAdvertisesBoundedSchemas(t *testing.T) {
 	if slices.Contains(cabinRequired, any("passenger_celsius")) {
 		t.Errorf("passenger_celsius must be optional, required = %v", cabinRequired)
 	}
+
+	assertEnum(t, schemas, "set_seat_heater", "seat", heatableSeats)
+	assertEnum(t, schemas, "set_seat_cooler", "seat", coolableSeats)
+	assertEnum(t, schemas, "set_auto_seat_climate", "seat", coolableSeats)
+	assertEnum(t, schemas, "actuate_trunk", "which", []string{"front", "rear"})
+
+	for _, tool := range []string{"set_seat_heater", "set_seat_cooler"} {
+		level := property(t, schemas, tool, "level")
+		if level["minimum"] != float64(0) || level["maximum"] != float64(3) {
+			t.Errorf("%s level bounds = %v, want 0 to 3", tool, level)
+		}
+	}
+
+	name := property(t, schemas, "set_vehicle_name", "name")
+	if name["minLength"] != float64(1) || name["maxLength"] != float64(32) {
+		t.Errorf("set_vehicle_name name bounds = %v, want 1 to 32", name)
+	}
+}
+
+// The advertised seat vocabulary, in the order the schema lists it.
+var (
+	heatableSeats = []string{
+		"front_left",
+		"front_right",
+		"rear_left",
+		"rear_center",
+		"rear_right",
+		"rear_left_back",
+		"rear_right_back",
+		"third_row_left",
+		"third_row_right",
+	}
+	// SetSeatCooler and AutoSeatAndClimate can only address the front two:
+	// the SDK drops anything else (pkg/vehicle/climate.go:13-20, 65-75).
+	coolableSeats = []string{"front_left", "front_right"}
+)
+
+func property(t *testing.T, schemas map[string]map[string]any, tool, argument string) map[string]any {
+	t.Helper()
+	schema, ok := schemas[tool]
+	if !ok {
+		t.Fatalf("%s was not advertised", tool)
+	}
+	properties, _ := schema["properties"].(map[string]any)
+	value, ok := properties[argument].(map[string]any)
+	if !ok {
+		t.Fatalf("%s does not advertise %s", tool, argument)
+	}
+	return value
+}
+
+func assertEnum(t *testing.T, schemas map[string]map[string]any, tool, argument string, want []string) {
+	t.Helper()
+	advertised, _ := property(t, schemas, tool, argument)["enum"].([]any)
+
+	var got []string
+	for _, value := range advertised {
+		text, ok := value.(string)
+		if !ok {
+			t.Fatalf("%s %s enum value %v is %T, want a string", tool, argument, value, value)
+		}
+		got = append(got, text)
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("%s %s enum = %v, want %v", tool, argument, got, want)
+	}
 }
 
 func TestServerRefusesAShortVINBeforeAnyNetworkUse(t *testing.T) {
@@ -308,6 +374,12 @@ func TestServerRefusalsAlwaysSpeakThisPackagesSentences(t *testing.T) {
 		{"required argument missing", "set_charge_limit", map[string]any{"vin": goodVIN}, fmt.Sprintf(tesla.SentenceMissingArgFmt, "percent")},
 		{"amps out of range", "set_charging_amps", map[string]any{"vin": goodVIN, "amps": 64}, fmt.Sprintf(tesla.SentenceIntRangeFmt, "amps", 1, 48)},
 		{"cabin temperature out of range", "set_cabin_temperature", map[string]any{"vin": goodVIN, "driver_celsius": 30}, fmt.Sprintf(tesla.SentenceCelsiusRangeFmt, "driver_celsius", 15.0, 28.0)},
+		{"a seat that is not a seat", "set_seat_heater", map[string]any{"vin": goodVIN, "seat": "driver", "level": 1}, fmt.Sprintf(tesla.SentenceEnumFmt, "seat", strings.Join(heatableSeats, ", "))},
+		{"a seat heater level out of range", "set_seat_heater", map[string]any{"vin": goodVIN, "seat": "front_left", "level": 4}, fmt.Sprintf(tesla.SentenceIntRangeFmt, "level", 0, 3)},
+		{"a seat the SDK cannot cool", "set_seat_cooler", map[string]any{"vin": goodVIN, "seat": "rear_left", "level": 1}, fmt.Sprintf(tesla.SentenceEnumFmt, "seat", strings.Join(coolableSeats, ", "))},
+		{"a trunk at neither end of the car", "actuate_trunk", map[string]any{"vin": goodVIN, "which": "side"}, fmt.Sprintf(tesla.SentenceEnumFmt, "which", "front, rear")},
+		{"a vehicle name that is too long", "set_vehicle_name", map[string]any{"vin": goodVIN, "name": strings.Repeat("a", 33)}, fmt.Sprintf(tesla.SentenceTextLengthFmt, "name", 1, 32)},
+		{"a vehicle name carrying a control character", "set_vehicle_name", map[string]any{"vin": goodVIN, "name": "Blue\nCar"}, fmt.Sprintf(tesla.SentenceTextControlFmt, "name")},
 	}
 
 	for _, tc := range cases {

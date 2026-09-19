@@ -2,6 +2,7 @@ package tesla_test
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/teslamotors/vehicle-command/pkg/protocol"
@@ -29,6 +30,14 @@ var shippedTools = []string{
 	"set_sentry_mode",
 	"flash_lights",
 	"honk_horn",
+	"set_seat_heater",
+	"set_seat_cooler",
+	"set_auto_seat_climate",
+	"set_steering_wheel_heater",
+	"actuate_trunk",
+	"vent_windows",
+	"close_windows",
+	"set_vehicle_name",
 }
 
 func TestCommandsShipsTheExpectedSurface(t *testing.T) {
@@ -78,11 +87,13 @@ func TestEveryCommandIsFullyDescribed(t *testing.T) {
 
 // Lock and unlock terminate on the vehicle security controller
 // (pkg/vehicle/security.go:306-312 -> executeRKEAction -> getVCSECResult,
-// pkg/vehicle/vcsec.go:88). Everything else this helper ships goes through
-// executeCarServerAction, which targets infotainment
+// pkg/vehicle/vcsec.go:88), and so does the trunk: OpenFrunk and OpenTrunk are
+// closure actions (pkg/vehicle/actions.go:17,27 -> executeClosureAction,
+// pkg/vehicle/vcsec.go:217-249 -> getVCSECResult). Everything else this helper
+// ships goes through executeCarServerAction, which targets infotainment
 // (pkg/vehicle/infotainment.go:28).
 func TestCommandDomainsMatchTheSDKRouting(t *testing.T) {
-	vcsecOnly := map[string]bool{"lock_doors": true, "unlock_doors": true}
+	vcsecOnly := map[string]bool{"lock_doors": true, "unlock_doors": true, "actuate_trunk": true}
 
 	for _, cmd := range tesla.Commands() {
 		want := protocol.DomainInfotainment
@@ -140,6 +151,23 @@ func TestValidateBounds(t *testing.T) {
 		{"passenger temperature out of range", "set_cabin_temperature", tesla.Args{VIN: goodVIN, DriverCelsius: ptr(21.0), PassengerCelsius: ptr(30.0)}},
 		{"sentry flag absent", "set_sentry_mode", tesla.Args{VIN: goodVIN}},
 		{"preconditioning flag absent", "set_preconditioning_max", tesla.Args{VIN: goodVIN}},
+		{"seat absent", "set_seat_heater", tesla.Args{VIN: goodVIN, Level: ptr(1)}},
+		{"seat level absent", "set_seat_heater", tesla.Args{VIN: goodVIN, Seat: ptr("front_left")}},
+		{"seat is not a seat", "set_seat_heater", tesla.Args{VIN: goodVIN, Seat: ptr("driver"), Level: ptr(1)}},
+		{"seat level below floor", "set_seat_heater", tesla.Args{VIN: goodVIN, Seat: ptr("front_left"), Level: ptr(-1)}},
+		{"seat level above ceiling", "set_seat_heater", tesla.Args{VIN: goodVIN, Seat: ptr("front_left"), Level: ptr(4)}},
+		{"cooler on a seat the SDK cannot cool", "set_seat_cooler", tesla.Args{VIN: goodVIN, Seat: ptr("rear_left"), Level: ptr(1)}},
+		{"cooler level above ceiling", "set_seat_cooler", tesla.Args{VIN: goodVIN, Seat: ptr("front_left"), Level: ptr(4)}},
+		{"auto seat climate on a seat the SDK cannot address", "set_auto_seat_climate", tesla.Args{VIN: goodVIN, Seat: ptr("rear_left"), Enabled: ptr(true)}},
+		{"auto seat climate flag absent", "set_auto_seat_climate", tesla.Args{VIN: goodVIN, Seat: ptr("front_left")}},
+		{"steering wheel flag absent", "set_steering_wheel_heater", tesla.Args{VIN: goodVIN}},
+		{"trunk not named", "actuate_trunk", tesla.Args{VIN: goodVIN}},
+		{"trunk that is neither end of the car", "actuate_trunk", tesla.Args{VIN: goodVIN, Which: ptr("side")}},
+		{"name absent", "set_vehicle_name", tesla.Args{VIN: goodVIN}},
+		{"name empty", "set_vehicle_name", tesla.Args{VIN: goodVIN, Name: ptr("")}},
+		{"name too long", "set_vehicle_name", tesla.Args{VIN: goodVIN, Name: ptr(strings.Repeat("a", 33))}},
+		{"name carrying a newline", "set_vehicle_name", tesla.Args{VIN: goodVIN, Name: ptr("Blue\nCar")}},
+		{"name carrying a control character", "set_vehicle_name", tesla.Args{VIN: goodVIN, Name: ptr("Blue\x07Car")}},
 	}
 
 	for _, tc := range cases {
@@ -167,6 +195,15 @@ func TestValidateAcceptsTheBoundsThemselves(t *testing.T) {
 		{"set_cabin_temperature", tesla.Args{VIN: goodVIN, DriverCelsius: ptr(15.0)}},
 		{"set_cabin_temperature", tesla.Args{VIN: goodVIN, DriverCelsius: ptr(28.0)}},
 		{"set_cabin_temperature", tesla.Args{VIN: goodVIN, DriverCelsius: ptr(28.0), PassengerCelsius: ptr(15.0)}},
+		{"set_seat_heater", tesla.Args{VIN: goodVIN, Seat: ptr("third_row_right"), Level: ptr(0)}},
+		{"set_seat_heater", tesla.Args{VIN: goodVIN, Seat: ptr("front_left"), Level: ptr(3)}},
+		{"set_seat_cooler", tesla.Args{VIN: goodVIN, Seat: ptr("front_left"), Level: ptr(0)}},
+		{"set_seat_cooler", tesla.Args{VIN: goodVIN, Seat: ptr("front_right"), Level: ptr(3)}},
+		{"actuate_trunk", tesla.Args{VIN: goodVIN, Which: ptr("front")}},
+		{"actuate_trunk", tesla.Args{VIN: goodVIN, Which: ptr("rear")}},
+		{"set_vehicle_name", tesla.Args{VIN: goodVIN, Name: ptr("a")}},
+		{"set_vehicle_name", tesla.Args{VIN: goodVIN, Name: ptr(strings.Repeat("a", 32))}},
+		{"set_vehicle_name", tesla.Args{VIN: goodVIN, Name: ptr("Bluey the car")}},
 	}
 
 	for _, tc := range cases {
@@ -203,8 +240,64 @@ func validArgsFor(tool string) tesla.Args {
 		args.Amps = ptr(16)
 	case "set_cabin_temperature":
 		args.DriverCelsius = ptr(21.0)
-	case "set_sentry_mode", "set_preconditioning_max":
+	case "set_sentry_mode", "set_preconditioning_max", "set_steering_wheel_heater":
 		args.Enabled = ptr(true)
+	case "set_seat_heater":
+		args.Seat, args.Level = ptr("front_left"), ptr(2)
+	case "set_seat_cooler":
+		args.Seat, args.Level = ptr("front_right"), ptr(1)
+	case "set_auto_seat_climate":
+		args.Seat, args.Enabled = ptr("front_left"), ptr(true)
+	case "actuate_trunk":
+		args.Which = ptr("rear")
+	case "set_vehicle_name":
+		args.Name = ptr("Bluey")
+	}
+	return args
+}
+
+// The schema is what the model reads; Validate is what every call is held to.
+// An advertised value the validator refuses is a trap, and a value it accepts
+// that was never advertised is an undocumented surface. Derive the cases from
+// the shipped schemas so a tool added later joins this gate or fails it.
+func TestAdvertisedEnumsAreExactlyWhatValidateAccepts(t *testing.T) {
+	const notAValue = "nowhere_in_the_enum"
+
+	for _, cmd := range tesla.Commands() {
+		for argument, schema := range cmd.Schema.Properties {
+			if len(schema.Enum) == 0 {
+				continue
+			}
+			t.Run(cmd.Name+"/"+argument, func(t *testing.T) {
+				for _, advertised := range schema.Enum {
+					value, ok := advertised.(string)
+					if !ok {
+						t.Fatalf("%s enum value %v is %T, want a string", argument, advertised, advertised)
+					}
+					if err := cmd.Validate(withEnumArg(t, validArgsFor(cmd.Name), argument, value)); err != nil {
+						t.Errorf("%s advertises %s=%q and then refuses it: %v", cmd.Name, argument, value, err)
+					}
+				}
+				if err := cmd.Validate(withEnumArg(t, validArgsFor(cmd.Name), argument, notAValue)); err == nil {
+					t.Errorf("%s accepted %s=%q, which it does not advertise", cmd.Name, argument, notAValue)
+				}
+			})
+		}
+	}
+}
+
+// withEnumArg sets one enum argument by its advertised name. An argument with
+// no case here is a new surface the test above cannot reach, so say so loudly
+// rather than silently skipping it.
+func withEnumArg(t *testing.T, args tesla.Args, argument, value string) tesla.Args {
+	t.Helper()
+	switch argument {
+	case "seat":
+		args.Seat = &value
+	case "which":
+		args.Which = &value
+	default:
+		t.Fatalf("no Args field is wired for enum argument %q", argument)
 	}
 	return args
 }
