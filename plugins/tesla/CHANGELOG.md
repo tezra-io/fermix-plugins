@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.1
+
+- The "not paired" refusal no longer sends the owner to pair the Fermix
+  project's own key. It named `https://tesla.com/_ak/fermix.ai`, which pairs the
+  key published on fermix.ai: a car paired that way still refused this
+  operator's commands, and the holder of that key's private half gained a key
+  to the car. The sentence now gives `https://tesla.com/_ak/<your-domain>` and
+  says which domain that is: the one the operator's own Tesla application
+  registered and that serves its public key. A test keeps any fixed host out of
+  it.
+- README: the origin example is `https://example.com` rather than fermix.ai, the
+  pairing step uses `<your-domain>` and warns against pairing a domain you do
+  not control, and the command rules match the shipped skill: a direct request
+  is the consent, and the agent asks first only for an implied, chained or
+  ambiguous command.
+
 ## 1.1.0
 
 - Comfort commands through the helper: `tesla_set_seat_heater` and
