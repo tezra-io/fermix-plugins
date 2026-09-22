@@ -205,11 +205,11 @@ command fails and a read succeeds.
 
 Every one takes the VIN. The skill treats a direct request ("lock the car") as
 the consent and sends it; the agent asks first only when a command is implied,
-several would be chained, or the car is unclear, and then names the command and
-the car and waits for a yes. It treats a refusal from the car as final rather
-than retrying, and reads the car's state rather than resend when a command is
-not confirmed. After unlocking or disarming Sentry Mode it says what that
-leaves open.
+several would be chained, the car is unclear, or the command would be a side
+effect of another request, and then names the command and the car and waits
+for a yes. It treats a refusal from the car as final rather than retrying, and
+reads the car's state rather than resend when a command is not confirmed. After
+unlocking or disarming Sentry Mode it says what that leaves open.
 
 ### Billing
 

@@ -159,5 +159,6 @@ the tests replace with a fake.
 ## Versioning
 
 `internal/tesla.Version` must be kept in step with the `version` field of
-`plugins/tesla/plugin.json`. Nothing checks this automatically — the two are
-read by different tools.
+`plugins/tesla/plugin.json`. The two are read by different tools, so
+`TestVersionMatchesManifest` compares them: `go test` fails, and the release
+lane with it, when a bump touched only one.

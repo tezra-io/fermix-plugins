@@ -10,11 +10,17 @@
   says which domain that is: the one the operator's own Tesla application
   registered and that serves its public key. A test keeps any fixed host out of
   it.
+- 1.0.0, 1.0.1 and 1.1.0 are yanked: every one of them carries that link. A
+  yanked version stays published, but the catalog refuses to install it and the
+  setup page flags an installed copy.
+- The helper reports 1.1.1. Its own version had stayed at 1.1.0 since the
+  manifest moved past it; a test now holds the two together, so a release whose
+  helper still reports the previous version fails before it is signed.
 - README: the origin example is `https://example.com` rather than fermix.ai, the
   pairing step uses `<your-domain>` and warns against pairing a domain you do
   not control, and the command rules match the shipped skill: a direct request
   is the consent, and the agent asks first only for an implied, chained or
-  ambiguous command.
+  ambiguous command, or one that would be a side effect of another request.
 
 ## 1.1.0
 
