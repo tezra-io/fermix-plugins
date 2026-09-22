@@ -13,10 +13,12 @@ import (
 // and the holder of that key's private half gains a key to their car.
 func TestUnpairedSentenceNamesNoFixedDomain(t *testing.T) {
 	sentence := tesla.SentenceUnpaired
-	if !strings.Contains(sentence, "https://tesla.com/_ak/<your-domain>") {
-		t.Fatalf("unpaired sentence must give the pairing link with the operator's own domain as a placeholder, got %q", sentence)
+	links := strings.Count(sentence, "https://tesla.com/_ak/")
+	placeholders := strings.Count(sentence, "https://tesla.com/_ak/<your-domain>")
+	if links == 0 {
+		t.Fatalf("unpaired sentence must give the pairing link, got %q", sentence)
 	}
-	if strings.Contains(sentence, "fermix.ai") {
-		t.Fatalf("unpaired sentence must not name a fixed domain, got %q", sentence)
+	if links != placeholders {
+		t.Fatalf("every pairing link must carry the operator's own domain as a placeholder, never a fixed host, got %q", sentence)
 	}
 }
