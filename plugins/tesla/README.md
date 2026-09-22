@@ -26,7 +26,7 @@ region.
    Management**, and **Vehicle Commands**. Approval is not instant.
 
 2. Set the application's URLs:
-   - **Allowed Origin URL**: the domain you own, e.g. `https://fermix.ai`.
+   - **Allowed Origin URL**: the domain you own, e.g. `https://example.com`.
    - **Allowed Redirect URI**: exactly
      `https://fermix.ai/api/integrations/tesla/callback`.
 
@@ -156,12 +156,14 @@ Publishing the key is not enough: each car has to accept it. On a phone signed
 in to the Tesla account, with the Tesla app installed, open
 
 ```
-https://tesla.com/_ak/fermix.ai
+https://tesla.com/_ak/<your-domain>
 ```
 
-(replace `fermix.ai` with the domain you registered) and follow the prompt to
-add the virtual key to that car. The account must already have granted
-`vehicle_cmds`, and you repeat it for every car.
+(`<your-domain>` is the domain your application registered, the one that serves
+your public key) and follow the prompt to add the virtual key to that car. The
+account must already have granted `vehicle_cmds`, and you repeat it for every
+car. Never open a pairing link for a domain you do not control: whoever holds
+that domain's private key can then command the car.
 
 `tesla_get_fleet_status` reports the result: it returns `key_paired_vins` and
 `unpaired_vins`, plus each car's firmware and whether it requires the signed
@@ -201,11 +203,13 @@ command fails and a read succeeds.
 | `tesla_navigate_waypoints` | Send a route of Google Maps place IDs |
 | `tesla_wake_vehicle` | Wake a sleeping car |
 
-Every one takes the VIN. The skill makes the agent name the action and the car
-and wait for a yes before each command, treat a refusal from the car as final
-rather than retrying, and read the car's state rather than resend when a command
-is not confirmed. Unlocking and disarming Sentry Mode are called out as access
-changes and confirmed on their own.
+Every one takes the VIN. The skill treats a direct request ("lock the car") as
+the consent and sends it; the agent asks first only when a command is implied,
+several would be chained, or the car is unclear, and then names the command and
+the car and waits for a yes. It treats a refusal from the car as final rather
+than retrying, and reads the car's state rather than resend when a command is
+not confirmed. After unlocking or disarming Sentry Mode it says what that
+leaves open.
 
 ### Billing
 
@@ -331,5 +335,5 @@ HomeLink, software updates, PIN to Drive, valet mode, speed limits and parental
 controls, energy products (Powerwall, solar, Wall Connector), Fleet Telemetry
 streaming and its history, and charging invoice downloads. The `tesla-plugin`
 skill teaches the agent the VIN workflow, which section answers which
-question, the asleep-car rules, the rule that every command is confirmed on
-its own, and the cost guardrails.
+question, the asleep-car rules, when a command needs a question first, and the
+cost guardrails.

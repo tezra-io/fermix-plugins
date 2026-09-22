@@ -4,7 +4,7 @@
   "display_name": "Tesla",
   "description": "Check your Tesla's charge, climate, location, alerts and history, and control charging, climate and locks.",
   "category": "productivity",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "default_enabled": false,
   "interface": {
     "short_description": "See your Tesla's state, and control it when you allow commands",
