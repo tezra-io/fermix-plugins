@@ -1836,5 +1836,42 @@ class ReleaseWorkflowMeta(Assertions):
         self.assertEqual(out["version"], json.loads((REPO_ROOT / "plugins/tesla/plugin.json").read_text())["version"])
 
 
+class ValidateToolsSkillsOnly(unittest.TestCase):
+    """A skills-only plugin (no runtime, at least one skill) may declare no
+    tools: it ships guidance the agent reads, and nothing runs anywhere. Every
+    other tool-less manifest is still refused, so an empty list cannot hide a
+    plugin that forgot its tools."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+        skill = self.dir / "skills" / "p-plugin"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text("x")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_skills_only_plugin_may_declare_no_tools(self):
+        manifest = {"name": "p", "tools": [], "skills": [{"name": "p-plugin", "path": "skills/p-plugin/SKILL.md"}]}
+        self.assertEqual(pluginlib._validate_tools(manifest, self.dir), [])
+
+    def test_no_tools_and_no_skills_is_rejected(self):
+        for skills in (None, []):
+            manifest = {"name": "p", "tools": [], "skills": skills}
+            errors = pluginlib._validate_tools(manifest, self.dir)
+            self.assertTrue(any("tools must be a non-empty list" in e for e in errors), (skills, errors))
+
+    def test_no_tools_with_a_runtime_is_rejected(self):
+        manifest = {
+            "name": "p",
+            "tools": [],
+            "skills": [{"name": "p-plugin", "path": "skills/p-plugin/SKILL.md"}],
+            "runtime": {"kind": "node", "command": "node"},
+        }
+        errors = pluginlib._validate_tools(manifest, self.dir)
+        self.assertTrue(any("tools must be a non-empty list" in e for e in errors), errors)
+
+
 if __name__ == "__main__":
     unittest.main()

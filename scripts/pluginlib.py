@@ -516,6 +516,11 @@ def _validate_auth_prefix(prefix):
     return []
 
 
+def _skills_only(manifest):
+    skills = manifest.get("skills")
+    return "runtime" not in manifest and isinstance(skills, list) and len(skills) >= 1
+
+
 def _validate_tools(manifest, plugin_dir):
     tools = manifest.get("tools")
     if tools is None or (isinstance(tools, list) and not tools):
@@ -527,7 +532,12 @@ def _validate_tools(manifest, plugin_dir):
         descriptor = plugin_dir.parent.parent / "native-builds" / f"{name}.json"
         if descriptor.is_file():
             return []
-        return ["tools must be a non-empty list"]
+        # A skills-only plugin (no runtime block, at least one skill) ships
+        # guidance the agent reads and nothing that runs, so it has no tools to
+        # declare. Its skill paths are checked by _validate_skills.
+        if _skills_only(manifest):
+            return []
+        return ["tools must be a non-empty list (unless the plugin is skills-only: no runtime and at least one skill)"]
     if not isinstance(tools, list):
         return ["tools must be a non-empty list"]
     errors = []
