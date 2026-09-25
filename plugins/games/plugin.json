@@ -1,0 +1,18 @@
+{
+  "schema_version": 2,
+  "name": "games",
+  "display_name": "Games",
+  "description": "Play the games on fermix.ai with Fermix. It finds each game's lobby from the site's games index and plays through the page's own WebMCP tools in its managed browser. Adds one skill and no tools; nothing runs outside Fermix.",
+  "category": "games",
+  "version": "1.0.0",
+  "min_core_version": "0.11.0",
+  "plugin_api": 2,
+  "auth": { "type": "none" },
+  "interface": {
+    "short_description": "Play chess and the other fermix.ai games with your agent",
+    "developer_name": "Fermix",
+    "logo": "assets/logo.svg"
+  },
+  "skills": [{ "name": "games-plugin", "path": "skills/games-plugin/SKILL.md" }],
+  "tools": []
+}
