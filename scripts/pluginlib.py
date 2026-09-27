@@ -587,6 +587,7 @@ def _validate_tool(tool, plugin_name, auth, seen, config_keys):
     if rail == "http":
         errors += _validate_http_tool(tool, label)
     errors += _validate_requires_setting(tool.get("requires_setting"), label, config_keys, rail)
+    errors += _validate_access_sensitive(tool, label)
     if auth.get("type") == "oauth2":
         declared = auth.get("scopes") or []
         scopes = tool.get("requires_scopes")
@@ -623,6 +624,30 @@ def _validate_requires_setting(setting, label, config_keys, rail):
         return [f"{label}: requires_setting must be a single config key string"]
     if setting not in config_keys:
         return [f"{label}: requires_setting names an undeclared config key {setting}"]
+    return []
+
+
+def _validate_access_sensitive(tool, label):
+    """`access_sensitive: true` marks a tool whose call changes who or what can
+    get at something the owner holds (Tesla: unlock, Sentry, trunk, window
+    vent). Fermix runs it at once on the owner's direct request and holds it for
+    one owner confirmation when the same turn read content someone else could
+    have written. Unlike `requires_setting`, it is honoured on an `mcp`-rail
+    preview: core carries the flag onto the tool discovery registers under the
+    same name.
+
+    One spelling: only the literal `true`, and absent means not sensitive.
+    Core reads nothing else as the flag, so `false`, `null`, strings and
+    numbers are refused rather than published as a flag that means nothing.
+    A read-only tool has nothing to hold. The remote_mcp refusal lives in
+    `_validate_remote_tool`, beside that tool kind's other rules.
+    """
+    if "access_sensitive" not in tool:
+        return []
+    if tool["access_sensitive"] is not True:
+        return [f"{label}: access_sensitive must be true when present"]
+    if tool.get("read_only") is not False:
+        return [f"{label}: access_sensitive is only for tools that change something (read_only: false)"]
     return []
 
 
@@ -1128,6 +1153,10 @@ def _validate_remote_tool(tool, label):
         errors.append(f"{label}: required_credential_scope must be one of {sorted(CREDENTIAL_SCOPES)}")
     if tool.get("rail") != "mcp":
         errors.append(f"{label}: rail must be 'mcp' for a remote_mcp plugin")
+    if "access_sensitive" in tool:
+        # Core closes a remote tool's fields and refuses any other key at
+        # install, so the flag would publish a manifest that cannot install.
+        errors.append(f"{label}: access_sensitive is not supported on a remote_mcp tool")
     parameters = tool.get("parameters")
     if not isinstance(parameters, dict) or parameters.get("type") != "object":
         errors.append(f"{label}: parameters must be an object schema (type: object)")

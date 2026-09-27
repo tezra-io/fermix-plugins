@@ -104,6 +104,13 @@ the same as any other refusal. `actuate_trunk` with `front` opens the frunk
 and cannot close it; with `rear` it moves the rear trunk, which opens a closed
 one and closes an open one on cars with a powered rear trunk.
 
+Every tool is advertised as neither read-only nor idempotent. `unlock_doors`,
+`set_sentry_mode`, `actuate_trunk` and `vent_windows` are also advertised as
+destructive (`destructiveHint: true`), because they can leave the car open;
+no other tool is. Fermix does not read these hints: it acts on the
+`access_sensitive` flag the same four tools carry in `plugin.json`, and
+`TestManifestAccessSensitiveMatchesTheHelper` keeps the two lists equal.
+
 `navigate_to` is deliberately absent. The SDK has no typed navigation method,
 and its command proxy maps `navigation_request` to `ErrCommandUseRESTAPI`
 because the endpoint needs server-side processing that end-to-end

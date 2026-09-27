@@ -49,6 +49,16 @@ gates the *process*: Fermix runs the local runtime only while that key reads
 `requires_setting`, and like it the key must be declared in the same manifest —
 a key nothing declares would leave a runtime nobody could ever start.
 
+A tool may carry `"access_sensitive": true` when its call changes who or what
+can get at something the owner holds (Tesla's unlock, Sentry, trunk and window
+vent). Fermix runs such a call at once on the owner's direct request, and holds
+it for one owner confirmation when the same turn read content someone else
+could have written or the request came from a shared channel. Only the literal
+`true` is accepted, and only on a `read_only: false` tool. Unlike
+`requires_setting`, it is honoured on an `mcp`-rail preview: Fermix carries it
+onto the tool discovery registers under that name. A `remote_mcp` tool cannot
+carry it.
+
 ### Remote MCP plugins (`plugin_api: 3`)
 
 A `remote_mcp` plugin declares a hosted Streamable-HTTP MCP endpoint; Fermix

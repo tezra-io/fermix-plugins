@@ -4,7 +4,7 @@
   "display_name": "Tesla",
   "description": "Check your Tesla's charge, climate, location, alerts and history, and control charging, climate and locks.",
   "category": "productivity",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "default_enabled": false,
   "interface": {
     "short_description": "See your Tesla's state, and control it when you allow commands",
@@ -1378,6 +1378,7 @@
       "description": "Unlock the doors; the car stays unlocked. Args: vin.",
       "policy_class": "external_api",
       "read_only": false,
+      "access_sensitive": true,
       "requires_scopes": [
         "vehicle_cmds"
       ],
@@ -1402,6 +1403,7 @@
       "description": "Open the front trunk, or open or close the rear. Args: vin, which (front, rear).",
       "policy_class": "external_api",
       "read_only": false,
+      "access_sensitive": true,
       "requires_scopes": [
         "vehicle_cmds"
       ],
@@ -1435,6 +1437,7 @@
       "description": "Vent the windows, leaving them ajar. Args: vin.",
       "policy_class": "external_api",
       "read_only": false,
+      "access_sensitive": true,
       "requires_scopes": [
         "vehicle_cmds"
       ],
@@ -1483,6 +1486,7 @@
       "description": "Turn Sentry Mode on or off. Args: vin, enabled (bool).",
       "policy_class": "external_api",
       "read_only": false,
+      "access_sensitive": true,
       "requires_scopes": [
         "vehicle_cmds"
       ],

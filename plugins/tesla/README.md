@@ -211,6 +211,30 @@ for a yes. It treats a refusal from the car as final rather than retrying, and
 reads the car's state rather than resend when a command is not confirmed. After
 unlocking or disarming Sentry Mode it says what that leaves open.
 
+### Unlock, Sentry, trunk and windows
+
+`tesla_unlock_doors`, `tesla_set_sentry_mode`, `tesla_actuate_trunk` and
+`tesla_vent_windows` change who or what can get into the car, so the manifest
+marks them `access_sensitive` and Fermix itself decides when they run:
+
+- Asked for directly, in a request that has read nothing from outside, they run
+  at once, like every other command.
+- When the same request read something someone else could have written (a web
+  page, an email, another plugin's or MCP server's result, a sub-agent's
+  report), Fermix asks you once before it sends: a tap, a card or `/confirm`
+  in that chat, or a spoken yes on a call. Tesla's own reads never count.
+- Asked from a shared channel such as Buzz, the confirmation goes to your own
+  chat, not into the channel.
+- When you confirm, Fermix sends exactly the command it held, once. The agent
+  never sees the confirmation.
+- Delegated workers and background runs never send them, and a scheduled job
+  sends one only when the job names the tool.
+
+The flag is per tool, so turning Sentry on and closing the rear trunk follow
+the same rule. The helper also reports the four as destructive
+(`destructiveHint: true`) to MCP clients; Fermix acts on the manifest flag, not
+on that hint.
+
 ### Billing
 
 Tesla meters commands the same way it meters reads, at its own published

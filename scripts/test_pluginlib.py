@@ -1873,5 +1873,59 @@ class ValidateToolsSkillsOnly(unittest.TestCase):
         self.assertTrue(any("tools must be a non-empty list" in e for e in errors), errors)
 
 
+# --- 20. per-tool access_sensitive: one spelling, local changing tools only --
+
+
+class AccessSensitive(TempPlugin):
+    """`access_sensitive: true` marks a tool Fermix holds for one owner
+    confirmation when the turn read content someone else could have written.
+    Core reads only the literal `true`, so any other value would publish a flag
+    that silently means "not sensitive". A read-only tool has nothing to hold,
+    and a remote_mcp tool's field set is closed and signed, so both refuse it."""
+
+    def test_true_on_a_changing_tool_is_accepted_on_both_local_rails(self):
+        manifest = hybrid_manifest(
+            tools=[http_tool(read_only=False, access_sensitive=True), mcp_tool(access_sensitive=True)]
+        )
+        self.assert_clean(pluginlib._validate_tools(manifest, Path(PLUGIN)))
+        plugin_dir = self.materialize(manifest)
+        self.assertEqual(pluginlib.validate_plugin_dir(plugin_dir)["name"], PLUGIN)
+
+    def test_plugin_api_2_admits_the_field(self):
+        """Additive to plugin API 2: it is not an api-3-only tool field."""
+        manifest = hybrid_manifest(tools=[http_tool(), mcp_tool(access_sensitive=True)])
+        self.assert_clean(pluginlib._validate_api_gating(manifest))
+
+    def test_only_the_literal_true_is_accepted(self):
+        for value in (False, None, "true", 1, 0, [], {}):
+            manifest = hybrid_manifest(tools=[http_tool(), mcp_tool(access_sensitive=value)])
+            self.assert_error(
+                pluginlib._validate_tools(manifest, Path(PLUGIN)),
+                f"{PLUGIN}_lock_doors: access_sensitive must be true when present",
+            )
+
+    def test_a_read_only_tool_cannot_be_access_sensitive(self):
+        manifest = api2_manifest(tools=[http_tool(read_only=True, access_sensitive=True)])
+        self.assert_error(
+            pluginlib._validate_tools(manifest, Path(PLUGIN)),
+            f"{PLUGIN}_search: access_sensitive is only for tools that change something (read_only: false)",
+        )
+
+    def test_a_remote_mcp_tool_cannot_be_access_sensitive(self):
+        manifest = remote_manifest()
+        manifest["tools"][2] = remote_tool(
+            f"{PLUGIN}_append",
+            description="Append Markdown to an existing note.",
+            read_only=False,
+            required_credential_scope="write",
+            access_sensitive=True,
+        )
+        self.assert_error(
+            pluginlib._validate_remote_contract(manifest),
+            f"{PLUGIN}_append: access_sensitive is not supported on a remote_mcp tool",
+        )
+        self.assert_no_error(pluginlib._validate_tools(manifest, Path(PLUGIN)), "access_sensitive")
+
+
 if __name__ == "__main__":
     unittest.main()
