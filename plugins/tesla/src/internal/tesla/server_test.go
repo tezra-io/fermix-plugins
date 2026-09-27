@@ -61,6 +61,38 @@ func TestServerAdvertisesExactlyTheShippedTools(t *testing.T) {
 	}
 }
 
+// The commands that change who or what can get into the car. Their
+// counterparts (lock_doors, close_windows) are not on the list: they close
+// the car rather than open it.
+var accessSensitiveTools = []string{"unlock_doors", "set_sentry_mode", "actuate_trunk", "vent_windows"}
+
+func TestServerMarksExactlyTheAccessSensitiveCommandsDestructive(t *testing.T) {
+	session, _ := connectServer(t, &fakeOpener{vehicle: &fakeVehicle{}})
+
+	listed, err := session.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("tools/list: %v", err)
+	}
+
+	marked := 0
+	for _, tool := range listed.Tools {
+		if tool.Annotations == nil || tool.Annotations.DestructiveHint == nil {
+			t.Errorf("%s advertises no destructive hint", tool.Name)
+			continue
+		}
+		want := slices.Contains(accessSensitiveTools, tool.Name)
+		if got := *tool.Annotations.DestructiveHint; got != want {
+			t.Errorf("%s destructiveHint = %v, want %v", tool.Name, got, want)
+		}
+		if want {
+			marked++
+		}
+	}
+	if marked != len(accessSensitiveTools) {
+		t.Errorf("advertised %d of the %d access-sensitive commands %v", marked, len(accessSensitiveTools), accessSensitiveTools)
+	}
+}
+
 func TestServerAdvertisesBoundedSchemas(t *testing.T) {
 	session, _ := connectServer(t, &fakeOpener{vehicle: &fakeVehicle{}})
 

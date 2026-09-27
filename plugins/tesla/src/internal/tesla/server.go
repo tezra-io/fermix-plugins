@@ -48,9 +48,11 @@ func NewServer(opener Opener, now func() time.Time, logf Logf) *mcp.Server {
 // held to, and there is exactly one of it.
 //
 // Every tool here changes the state of a physical car, so none is read-only or
-// idempotent.
+// idempotent. Only the access-sensitive ones (unlock, Sentry Mode, a trunk,
+// venting the windows) are destructive: they can leave the car open. Fermix
+// does not read these hints; it acts on the manifest's access_sensitive flag.
 func register(server *mcp.Server, opener Opener, cmd *Command, now func() time.Time, logf Logf) {
-	destructive := false
+	destructive := cmd.AccessSensitive
 	openWorld := true
 	tool := &mcp.Tool{
 		Name:        cmd.Name,

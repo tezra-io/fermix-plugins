@@ -54,6 +54,11 @@ type Command struct {
 	// command needs avoids waking infotainment for a VCSEC-only command.
 	Domains []protocol.Domain
 	Schema  *jsonschema.Schema
+	// AccessSensitive marks a command that changes who or what can get into
+	// the car: unlocking, Sentry Mode, a trunk, the windows. Fermix acts on
+	// the same tool's "access_sensitive" flag in plugin.json; here it only
+	// sets the MCP destructive hint.
+	AccessSensitive bool
 
 	params []param
 	check  func(Args) error
@@ -155,7 +160,7 @@ func Commands() []*Command {
 		autoSeatClimate(),
 		steeringWheelHeater(),
 		actuateTrunk(),
-		simple("vent_windows", "Vent the car's windows, leaving them slightly open.", carAPI.VentWindows),
+		ventWindows(),
 		simple("close_windows", "Close the car's windows.", carAPI.CloseWindows),
 		vehicleName(),
 	}
@@ -286,9 +291,10 @@ func preconditioningMax() *Command {
 
 func sentryMode() *Command {
 	return &Command{
-		Name:        "set_sentry_mode",
-		Description: "Turn the car's sentry mode on or off.",
-		Domains:     []protocol.Domain{protocol.DomainInfotainment},
+		Name:            "set_sentry_mode",
+		Description:     "Turn the car's sentry mode on or off.",
+		Domains:         []protocol.Domain{protocol.DomainInfotainment},
+		AccessSensitive: true,
 		params: []param{{
 			name:     "enabled",
 			required: true,
@@ -315,6 +321,7 @@ func lockDoors() *Command {
 func unlockDoors() *Command {
 	cmd := simple("unlock_doors", "Unlock the car's doors.", carAPI.Unlock)
 	cmd.Domains = []protocol.Domain{protocol.DomainVCSEC}
+	cmd.AccessSensitive = true
 	return cmd
 }
 
@@ -445,7 +452,8 @@ func actuateTrunk() *Command {
 		Name: "actuate_trunk",
 		Description: "Open the front trunk, or operate the rear trunk. front opens the frunk, which cannot be closed remotely. " +
 			"rear moves the rear trunk: it opens a closed one, and closes an open one on cars with a powered rear trunk.",
-		Domains: []protocol.Domain{protocol.DomainVCSEC},
+		Domains:         []protocol.Domain{protocol.DomainVCSEC},
+		AccessSensitive: true,
 		params: []param{{
 			name:     "which",
 			required: true,
@@ -466,6 +474,13 @@ func actuateTrunk() *Command {
 			panic("tesla: actuate_trunk reached an unvalidated trunk: " + *args.Which)
 		},
 	}
+}
+
+// Venting leaves the windows open; closing them is not access-sensitive.
+func ventWindows() *Command {
+	cmd := simple("vent_windows", "Vent the car's windows, leaving them slightly open.", carAPI.VentWindows)
+	cmd.AccessSensitive = true
+	return cmd
 }
 
 func vehicleName() *Command {

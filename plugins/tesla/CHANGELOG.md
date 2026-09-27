@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.2.0
+
+- `tesla_unlock_doors`, `tesla_set_sentry_mode`, `tesla_actuate_trunk` and
+  `tesla_vent_windows` carry `"access_sensitive": true` in the manifest: they
+  change who or what can get into the car. With it, Fermix still sends them at
+  once on the owner's direct request, and holds them for one owner
+  confirmation when the same turn read content someone else could have
+  written (a web page, mail, another plugin, a sub-agent's report) or the
+  request came from a shared channel such as Buzz. Tesla's own reads never
+  count. Delegated workers and background runs cannot send them, and a
+  scheduled job sends one only when the job names the tool. No tool is added,
+  removed or renamed.
+- The flag is per tool, so turning Sentry on and closing the rear trunk are
+  held in the same cases as turning Sentry off and opening it.
+- The helper advertises the same four as destructive (`destructiveHint: true`);
+  every command was `false`. Fermix does not read the hint. A test holds the
+  helper's four and the manifest's four together, and another pins the mcp
+  previews in `plugin.json` to the tools the helper advertises.
+- The skill keeps "a direct request is the consent" and adds what to do when
+  one of the four comes back not sent, waiting for the owner: say a
+  confirmation was sent and stop, never call it again; on a call, ask the one
+  question the result names.
+- 1.1.1 is yanked: without the flag, an engine that holds these commands would
+  still send them on the model's judgment alone.
+- `min_core_version` stays 0.11.0. An engine that predates the flag ignores it
+  and runs 1.2.0 exactly as it ran 1.1.1.
+
 ## 1.1.1
 
 - The "not paired" refusal no longer sends the owner to pair the Fermix

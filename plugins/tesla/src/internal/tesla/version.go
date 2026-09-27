@@ -9,7 +9,7 @@ import "os"
 // Version is the helper's own version. It must be kept in step with the
 // `version` field of plugins/tesla/plugin.json; the two are read by different
 // tools, and TestVersionMatchesManifest is what holds them together.
-const Version = "1.1.1"
+const Version = "1.2.0"
 
 // userAgentOverride names the environment variable that replaces the default
 // user agent. Tesla's SDK appends its own "tesla-sdk/<version>" token to
