@@ -39,6 +39,5 @@ Every wait:
 Playing through:
 
 - A wait that timed out is not the end of anything: wait again.
-- Fermix warns once when the same call repeats, and playing through repeats the wait. In a live game that is expected, because each wait returns a fresh state: keep playing.
-- After three timed-out waits in a row (the other side has not moved for over two minutes), stop: say whose move it is and end your turn, then pick up again when the person says so. Fermix ends a turn that makes one identical call five times in a row.
+- After three waits in a row that bring nothing new (each timed out on the same state, so the other side has not moved for over two minutes), stop: say whose move it is and end your turn, then pick up again when the person says so.
 - One turn has about 100 steps. In a long game, such as chess, give the person the position and end your turn by about 80 tool calls, then carry on in the next turn when they say so. The game keeps its state between turns.

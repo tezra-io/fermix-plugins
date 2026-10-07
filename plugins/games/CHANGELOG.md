@@ -9,10 +9,9 @@
   without a `timeout_ms` and 60 at most, so it asks the page for up to 50
   seconds and passes a `timeout_ms` about 10 seconds longer. A wait that comes
   back `timedOut` is the page's limit, so it waits again.
-- While playing through it hands the turn back after three timed-out waits in a
-  row, before Fermix's repeated-call stop, and by about 80 tool calls in a long
-  game, before the turn's step limit. Fermix's one-time repeated-call warning on
-  a wait is expected in a live game.
+- While playing through it hands the turn back after three waits in a row that
+  bring nothing new, and by about 80 tool calls in a long game, before the
+  turn's step limit.
 
 ## 1.0.0
 
