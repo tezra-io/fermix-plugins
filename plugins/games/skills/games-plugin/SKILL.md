@@ -21,7 +21,24 @@ Fermix plays the games hosted on fermix.ai through the tools each game page offe
 
 ## Playing
 
-- Read the state before every move and submit with whatever the state says a move needs, such as its version. A refused action returns the current state: recover from that, never retry blind.
-- A wait tool blocks the turn while it waits, and in a chat that holds the whole conversation. Keep any wait short, pass a `timeout_ms` longer than the wait you ask the page for (the browser's default is shorter than most page waits), and never loop on waits to watch a game. Move, tell the person it is their turn, end the turn; they say when they have moved. On a voice call the same rule keeps you free to talk.
-- A wait that came back as `webmcp_timeout` may still have finished in the page. Read the state before acting on it.
+- Read the state before every move and submit with whatever the state says a move needs, such as its version. A wait returns the state too, so a move can follow a wait directly. A refused action returns the current state: recover from that, never retry blind.
 - Your seat key lives in this conversation's browser profile. When the state shows no seat of yours (a spectator view), reopen the seat link you kept. A join code works once, so do not ask for it again.
+
+## Waiting for the other side
+
+A wait tool holds your turn until it returns, and while it holds, the person cannot talk to you. So there are two ways to play, and the person picks:
+
+- **Move by move**, the default. Move, tell the person it is their turn, and end your turn; they say when they have moved. Keep each wait short. On a voice call, stay with this unless the person asks otherwise, because you cannot talk while you wait.
+- **Play through**, when the person asks you to keep playing, watch the game, or play to the end. Stay in your turn: wait for your turn, move, wait again, and stop when the state's `result` says the game is over. Say once that you are playing through, then play. The person chose this, so do not stop to ask whether to continue and do not fall back to move by move; only the two limits below end the turn early.
+
+Every wait:
+
+- Fermix holds one `webmcp` call for 8 seconds when you pass no `timeout_ms`, and for 60 seconds at most. Ask the page for at most 50 seconds (less if its schema says so) and pass a `timeout_ms` about 10 seconds longer, up to 60000.
+- A wait that returns `timedOut: true` hit the page's own limit and carries the current state: the other side has not moved yet. A `webmcp_timeout` means Fermix stopped waiting before the page answered; the call may still have finished in the page, so read the state before acting.
+
+Playing through:
+
+- A wait that timed out is not the end of anything: wait again.
+- Fermix warns once when the same call repeats, and playing through repeats the wait. In a live game that is expected, because each wait returns a fresh state: keep playing.
+- After three timed-out waits in a row (the other side has not moved for over two minutes), stop: say whose move it is and end your turn, then pick up again when the person says so. Fermix ends a turn that makes one identical call five times in a row.
+- One turn has about 100 steps. In a long game, such as chess, give the person the position and end your turn by about 80 tool calls, then carry on in the next turn when they say so. The game keeps its state between turns.

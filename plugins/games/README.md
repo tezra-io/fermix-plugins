@@ -25,10 +25,17 @@ site's index.
 
 ## Playing in a chat
 
-A page's wait tool blocks the conversation while it waits. The skill therefore
-plays move by move: the agent moves, says it is your turn, and ends its turn;
-you say when you have moved. On a voice call the same rule keeps it free to
-talk.
+A page's wait tool blocks the conversation while it waits, so the skill plays
+move by move unless you say otherwise: the agent moves, says it is your turn,
+and ends its turn; you say when you have moved. On a voice call the same
+default keeps it free to talk.
+
+Ask it to keep playing, watch the game, or play to the end, and it plays
+through instead: it waits for your move, answers it and waits again, in one
+turn, until the game is over. A wait lasts at most 50 seconds on the page (and
+60 in Fermix's browser), so it waits again whenever one times out. It hands the
+turn back early in two cases: you have not moved for over two minutes, or a long
+game is nearing the turn's step limit. Say "keep going" and it carries on.
 
 ## Install
 
