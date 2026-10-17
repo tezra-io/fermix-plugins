@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.4
+
+- A vault path written from your home folder (`~/Documents/Vault`) now works.
+  Nothing expanded the `~`, so the server looked for a folder literally named
+  `~` and stopped with "OBSIDIAN_VAULT_PATH does not exist".
+
 ## 1.0.3
 
 - Clearer tool descriptions and a stronger skill trigger so the agent uses the

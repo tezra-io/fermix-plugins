@@ -17,6 +17,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 const MAX_SEARCH_RESULTS = 50;
@@ -28,13 +29,22 @@ function fatal(message) {
   process.exit(1);
 }
 
+// The vault path is typed by a person, often as `~/...`, and no shell stands
+// between that setting and this process to expand it. Only the caller's own
+// home is meant: `~user` is left as written and fails as a missing path.
+function expandHome(rawPath) {
+  if (rawPath === "~") return os.homedir();
+  if (rawPath.startsWith("~/")) return path.join(os.homedir(), rawPath.slice(2));
+  return rawPath;
+}
+
 const rawVaultPath = process.env.OBSIDIAN_VAULT_PATH;
 if (typeof rawVaultPath !== "string" || rawVaultPath.trim() === "") {
   fatal("OBSIDIAN_VAULT_PATH is not set — configure the plugin's vault path");
 }
 let vaultRoot;
 try {
-  vaultRoot = fs.realpathSync(rawVaultPath);
+  vaultRoot = fs.realpathSync(expandHome(rawVaultPath));
 } catch {
   fatal(`OBSIDIAN_VAULT_PATH does not exist: ${rawVaultPath}`);
 }
