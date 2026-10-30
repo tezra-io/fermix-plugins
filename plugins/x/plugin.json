@@ -4,7 +4,7 @@
   "display_name": "X",
   "description": "Post, reply, search, like, and read on X (Twitter).",
   "category": "productivity",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "default_enabled": false,
   "interface": {
     "short_description": "Post, search, and read on X (Twitter)",
@@ -135,7 +135,7 @@
     },
     {
       "name": "x_get_post",
-      "description": "Get one X post by id, with author. Use the X tools for X content, not the browser.",
+      "description": "Get one X post by id, with author.",
       "policy_class": "external_api",
       "read_only": true,
       "requires_scopes": [
