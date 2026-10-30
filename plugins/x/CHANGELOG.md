@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.2
+
+- The agent no longer refuses what the X API can't do. The skill used to forbid
+  the browser for anything on X and end every failed call with "reconnect"; it
+  now starts with the `x_*` tools and moves to x.com in the browser for actions
+  a pay-per-use X app is refused (liking, following, quoting, blocking,
+  reporting, replying to a post that didn't summon the user), for what the
+  plugin has no tool for (DMs, bookmarks, mutes, media), and for a call X
+  refuses for a reason a retry or a reconnect won't change. A 401 or a missing
+  scope is still a reconnect.
+- Tool descriptions no longer tell the agent to avoid the browser for X.
+- Cost notes follow X's April 2026 pricing: the user's own posts and mentions
+  read at ~$0.001 each.
+
 ## 1.0.1
 
 - Tighter, more token-efficient tool descriptions and skill trigger: dropped the
