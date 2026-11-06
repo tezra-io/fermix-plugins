@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.5
+
+- A link inside the vault no longer reaches a file outside it. Paths were
+  checked only as written, so a symlink planted in the vault let
+  `obsidian_read_note` read any file the user can (an SSH key, say) and
+  `obsidian_append_note` add to one (a shell profile), and creating a note at
+  a dangling link made its target outside the vault. Every path now has to
+  resolve, links followed, inside the vault's real folder, or the call fails
+  with "path escapes the vault"; create refuses anything already at the path,
+  a dangling link included.
+- Notes in a folder linked into the vault from elsewhere on disk can no
+  longer be read, listed or added to through the plugin (search already
+  skipped them). Links between notes inside the vault keep working.
+
 ## 1.0.4
 
 - A vault path written from your home folder (`~/Documents/Vault`) now works.

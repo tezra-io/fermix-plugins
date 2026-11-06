@@ -22,6 +22,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "20"
       - name: Unit-test the validation library
         run: python3 scripts/test_pluginlib.py
 
@@ -30,3 +33,6 @@ jobs:
 
       - name: Boundary-check every plugin as it would be packed
         run: python3 scripts/check_plugin_package.py plugins/*/
+
+      - name: Test the Obsidian server's vault path safety
+        run: node --test plugins/obsidian/src/vault_paths.test.js

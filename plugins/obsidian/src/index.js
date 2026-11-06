@@ -8,7 +8,8 @@
 //
 // The vault is reached as plain files — the Obsidian app does not need to
 // be running. No network access. Every path argument must resolve inside
-// the vault root; absolute paths and `..` escapes are rejected loudly.
+// the vault root; absolute paths and `..` escapes are rejected loudly, and so
+// is a path that a symlink carries outside the vault's real path.
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -51,6 +52,11 @@ try {
 if (!fs.statSync(vaultRoot).isDirectory()) {
   fatal(`OBSIDIAN_VAULT_PATH is not a directory: ${rawVaultPath}`);
 }
+// A note is opened with O_NOFOLLOW so a symlink swapped in after its real
+// path was checked is refused; without the flag that check cannot hold.
+if (typeof fs.constants.O_NOFOLLOW !== "number") {
+  fatal("this platform has no O_NOFOLLOW, so vault paths cannot be held inside the vault");
+}
 
 // Resolve a vault-relative path and assert it stays inside the vault root.
 // Rejects absolute paths and any `..` segment before resolution so the
@@ -66,10 +72,57 @@ function resolveInVault(relPath) {
     throw new Error(`path escapes the vault ('..' is not allowed): '${relPath}'`);
   }
   const resolved = path.resolve(vaultRoot, relPath);
-  if (resolved !== vaultRoot && !resolved.startsWith(vaultRoot + path.sep)) {
+  if (!isInsideVault(resolved)) {
     throw new Error(`path escapes the vault: '${relPath}'`);
   }
   return resolved;
+}
+
+function isInsideVault(absPath) {
+  return absPath === vaultRoot || absPath.startsWith(vaultRoot + path.sep);
+}
+
+// The real path of a vault entry, every symlink resolved, held inside the
+// vault root. Null when nothing is there to resolve (a dangling link too).
+function realPathInVault(resolved, relPath) {
+  let real;
+  try {
+    real = fs.realpathSync(resolved);
+  } catch (error) {
+    if (error.code === "ENOENT" || error.code === "ENOTDIR") return null;
+    throw error;
+  }
+  if (!isInsideVault(real)) {
+    throw new Error(`path escapes the vault: '${relPath}'`);
+  }
+  return real;
+}
+
+// Where a new note lands: the real path of its deepest existing ancestor,
+// held inside the vault, joined with the segments that do not exist yet.
+// Bounded: each step climbs one folder and the walk stops at the vault root.
+function realCreatePath(resolved, relPath) {
+  const missing = [path.basename(resolved)];
+  let dir = path.dirname(resolved);
+  let real = realPathInVault(dir, relPath);
+  while (real === null && dir !== vaultRoot) {
+    missing.unshift(path.basename(dir));
+    dir = path.dirname(dir);
+    real = realPathInVault(dir, relPath);
+  }
+  if (real === null) throw new Error(`the vault folder is gone: '${vaultRoot}'`);
+  return path.join(real, ...missing);
+}
+
+// Opens a checked real path without following a symlink at its last
+// component, hands the descriptor to `use`, and closes it on every path.
+function withNoFollow(realPath, flags, use) {
+  const fd = fs.openSync(realPath, flags | fs.constants.O_NOFOLLOW);
+  try {
+    return use(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
 }
 
 function requireNotePath(relPath) {
@@ -136,46 +189,55 @@ function searchNotes(args) {
 }
 
 function readNote(args) {
-  const resolved = requireNotePath(requireString(args, "path"));
-  if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
-    throw new Error(`note not found: '${args.path}'`);
+  const relPath = requireString(args, "path");
+  const real = realPathInVault(requireNotePath(relPath), relPath);
+  if (real === null || !fs.statSync(real).isFile()) {
+    throw new Error(`note not found: '${relPath}'`);
   }
-  return text(fs.readFileSync(resolved, "utf8"));
+  return text(withNoFollow(real, fs.constants.O_RDONLY, (fd) => fs.readFileSync(fd, "utf8")));
 }
 
 function createNote(args) {
   const relPath = requireString(args, "path");
   const content = requireString(args, "content");
-  const resolved = requireNotePath(relPath);
-  if (fs.existsSync(resolved)) {
+  const target = realCreatePath(requireNotePath(relPath), relPath);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  try {
+    // `wx` refuses anything already at the path, a dangling link included,
+    // instead of following it.
+    fs.writeFileSync(target, content, { encoding: "utf8", flag: "wx" });
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
     throw new Error(`note already exists: '${relPath}' — use append_note to add to it`);
   }
-  fs.mkdirSync(path.dirname(resolved), { recursive: true });
-  fs.writeFileSync(resolved, content, "utf8");
   return text(`Created '${relPath}' (${Buffer.byteLength(content)} bytes)`);
 }
 
 function appendNote(args) {
   const relPath = requireString(args, "path");
   const content = requireString(args, "content");
-  const resolved = requireNotePath(relPath);
-  if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
+  const real = realPathInVault(requireNotePath(relPath), relPath);
+  if (real === null || !fs.statSync(real).isFile()) {
     throw new Error(`note not found: '${relPath}' — use create_note to create it`);
   }
-  const existing = fs.readFileSync(resolved, "utf8");
-  const separator = existing === "" || existing.endsWith("\n") ? "" : "\n";
-  fs.appendFileSync(resolved, separator + content, "utf8");
+  const flags = fs.constants.O_RDWR | fs.constants.O_APPEND;
+  withNoFollow(real, flags, (fd) => {
+    const existing = fs.readFileSync(fd, "utf8");
+    const separator = existing === "" || existing.endsWith("\n") ? "" : "\n";
+    fs.appendFileSync(fd, separator + content, "utf8");
+  });
   return text(`Appended ${Buffer.byteLength(content)} bytes to '${relPath}'`);
 }
 
 function listFolder(args) {
   const relPath = args?.path ?? "";
   const resolved = relPath === "" ? vaultRoot : resolveInVault(relPath);
-  if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
+  const real = realPathInVault(resolved, relPath || "/");
+  if (real === null || !fs.statSync(real).isDirectory()) {
     throw new Error(`folder not found: '${relPath || "/"}'`);
   }
   const entries = fs
-    .readdirSync(resolved, { withFileTypes: true })
+    .readdirSync(real, { withFileTypes: true })
     .filter((entry) => !entry.name.startsWith("."))
     .map((entry) => (entry.isDirectory() ? `${entry.name}/` : entry.name))
     .sort();

@@ -38,7 +38,9 @@ access.
 | `obsidian_list_folder` | List notes/folders under a vault path |
 
 Paths are always vault-relative (`folder/note.md`); absolute paths and `..`
-are rejected. The `obsidian-plugin` skill teaches the agent the
+are rejected, and so is any path a symlink carries outside the vault: a note
+or folder linked in from elsewhere on disk is refused (search skips it),
+while links between notes inside the vault keep working. The `obsidian-plugin` skill teaches the agent the
 search-before-read flow and the append-vs-create choice.
 
 No logo ships with this plugin: Obsidian's brand guidelines reserve the

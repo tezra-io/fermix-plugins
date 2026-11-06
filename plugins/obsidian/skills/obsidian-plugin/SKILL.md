@@ -33,5 +33,5 @@ Don't rename, move, reorganize, or rewrite existing notes on your own initiative
 ## Notes
 
 - An empty search usually means the term isn't in the vault — try a shorter/different query before concluding the note is absent.
-- "path escapes the vault" — the path was absolute or had `..`; use a vault-relative path.
+- "path escapes the vault" — the path was absolute or had `..` (use a vault-relative path), or it leads through a link to a place outside the vault, which the tools never open.
 - If the `obsidian_*` tools aren't available or a call returns "OBSIDIAN_VAULT_PATH is not set" / `:needs_config`, the vault path isn't configured — tell the user to set it on the Fermix setup page (or `fermix plugins config set obsidian OBSIDIAN_VAULT_PATH <path>`). Don't fall back to the browser.
