@@ -1805,7 +1805,7 @@ class ReleaseWorkflowMeta(Assertions):
                 "linux-aarch64": ("linux", "arm64"),
             },
         )
-        self.assertEqual(by_target["macos-x86_64"]["runner"], "macos-14")
+        self.assertEqual(by_target["macos-x86_64"]["runner"], "macos-15")
         self.assertEqual(by_target["linux-aarch64"]["runner"], "ubuntu-24.04-arm")
 
     def test_a_descriptor_without_a_toolchain_key_is_still_rust(self):
@@ -1871,6 +1871,32 @@ class ValidateToolsSkillsOnly(unittest.TestCase):
         }
         errors = pluginlib._validate_tools(manifest, self.dir)
         self.assertTrue(any("tools must be a non-empty list" in e for e in errors), errors)
+
+
+# --- 19a. workflows: every action is pinned to a commit ---------------------
+
+
+class WorkflowPins(unittest.TestCase):
+    """A tag or branch can be moved to other code after review; a commit cannot.
+    The release job signs what it publishes, so an action it runs must be the
+    code that was reviewed."""
+
+    USES = re.compile(r"^\s*(?:-\s*)?uses:\s*(\S+)", re.M)
+
+    def test_every_action_is_pinned_to_a_full_commit_sha(self):
+        loose = []
+        for workflow in sorted((REPO_ROOT / ".github" / "workflows").glob("*.yml")):
+            for ref in self.USES.findall(workflow.read_text()):
+                if not re.fullmatch(r"[^@\s]+@[0-9a-f]{40}", ref):
+                    loose.append(f"{workflow.name}: {ref}")
+        self.assertEqual(loose, [])
+
+    def test_no_native_build_names_a_retired_runner(self):
+        # GitHub retired the macos-14 images on 2026-11-02; a job that asks for
+        # one is cancelled and the release never publishes.
+        for descriptor in sorted((REPO_ROOT / "native-builds").glob("*.json")):
+            runners = json.loads(descriptor.read_text())["targets"]
+            self.assertNotIn("macos-14", runners.values(), descriptor.name)
 
 
 # --- 20. per-tool access_sensitive: one spelling, local changing tools only --

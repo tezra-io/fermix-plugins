@@ -5,8 +5,8 @@
   "binary": "fermix-tesla",
   "go_version": "1.26",
   "targets": {
-    "macos-aarch64": "macos-14",
-    "macos-x86_64": "macos-14",
+    "macos-aarch64": "macos-15",
+    "macos-x86_64": "macos-15",
     "linux-x86_64": "ubuntu-24.04",
     "linux-aarch64": "ubuntu-24.04-arm"
   }

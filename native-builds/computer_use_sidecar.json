@@ -4,7 +4,7 @@
   "crate_path": "native/computer-use-sidecar",
   "binary": "fermix-computer-use",
   "targets": {
-    "macos-aarch64": "macos-14",
+    "macos-aarch64": "macos-15",
     "linux-x86_64": "ubuntu-24.04"
   }
 }
