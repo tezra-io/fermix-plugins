@@ -43,8 +43,7 @@ on:
         required: true
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 jobs:
   meta:
@@ -66,7 +65,7 @@ jobs:
       go_version: ${{ steps.meta.outputs.go_version }}
       binary: ${{ steps.meta.outputs.binary }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Resolve plugin + build matrix
         id: meta
@@ -180,7 +179,7 @@ jobs:
       # rust: the crate lives in another repo, pinned by the descriptor's ref.
       - name: Checkout native source (rust)
         if: needs.meta.outputs.toolchain == 'rust'
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: ${{ needs.meta.outputs.repo }}
           ref: ${{ needs.meta.outputs.ref }}
@@ -189,9 +188,9 @@ jobs:
       # go: the module lives in THIS repo, at the tagged (or dispatched) commit.
       - name: Checkout this repo (go)
         if: needs.meta.outputs.toolchain == 'go'
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         if: needs.meta.outputs.toolchain == 'rust'
         with:
           targets: ${{ matrix.triple }}
@@ -232,7 +231,7 @@ jobs:
           cp "$bin" "out/$BINARY"
           chmod 0755 "out/$BINARY"
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         if: needs.meta.outputs.toolchain == 'go'
         with:
           go-version: ${{ needs.meta.outputs.go_version }}
@@ -268,7 +267,7 @@ jobs:
           test -x "$out" || { echo "::error::built binary missing/not executable: $out"; exit 1; }
           chmod 0755 "$out"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: bin-${{ matrix.target }}
           path: out/${{ needs.meta.outputs.binary }}
@@ -281,16 +280,22 @@ jobs:
     # run when `build` was skipped (declarative plugin: native=false).
     if: github.event_name == 'push' && always() && (needs.build.result == 'success' || needs.build.result == 'skipped')
     runs-on: ubuntu-24.04
+    # Only this job publishes and signs: it alone may write the release and mint
+    # the OIDC token cosign signs with. The build jobs compile pinned outside
+    # code and get neither.
+    permissions:
+      contents: write
+      id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
-      - uses: sigstore/cosign-installer@v3
+      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.1
 
       - name: Download native binaries (per target)
         if: needs.meta.outputs.native == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: bin-*
           path: artifacts
@@ -380,7 +385,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Publish plugin release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ github.ref_name }}
           fail_on_unmatched_files: true
